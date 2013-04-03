@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" creationComplete="init(event)">
+	<fx:Declarations>
+		<!-- s:HTTPService method="GET" result="getSceneContributions_resultHandler(event)" fault="getSceneContributions_faultHandler(event)" resultFormat="text" id="getSceneContributions" showBusyCursor="true" /-->
+		<!-- s:HTTPService method="GET" result="getTaskPortfolioComment_resultHandler(event)" fault="getTaskPortfolioComment_faultHandler(event)" resultFormat="text" id="getTaskPortfolioComment" showBusyCursor="true" /-->
+		<!-- s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/groupInfo'}" method="GET" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" resultFormat="text" id="getAllGroups" /-->
+		<fx:Object id="currentGroup" />
+		<fx:Object id="currentTask" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import content.workarea.materials.MaterialsItem;
+			
+			import flash.text.engine.TabAlignment;
+			
+			import listeners.MaterialToPreviewEvent;
+			import listeners.ShowFullscreenEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] private var _groupNameList:ArrayCollection;
+			[Bindable] private var _groupList:ArrayCollection;
+			private var groupsLoaded:Boolean = false;
+			public static const VIDEO_TYPE:String = "VIDEO_TYPE";
+			public static const IMAGE_TYPE:String = "IMAGE_TYPE";
+			public static const PORTFOLIO_TYPE:String = "PORTFOLIO";
+
+			private var sciApp:sciwork = mx.core.FlexGlobals.topLevelApplication as sciwork;
+			
+			// Data includes URL to album cover.
+/*			[Bindable]
+			private var actualCollection:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var sampleCollection:ArrayCollection = new ArrayCollection([
+				{Task:'Question 1', Complete:'Complete', Images:["assets/simu/pics/crossBG.png"]},
+				{Task:'Question 2', Complete:'Incomplete', Images:["assets/simu/pics/stop.png", "assets/simu/pics/start.png"]},
+				{Task:'Question 1', Complete:'Complete', Images:["assets/fs.png"]},
+				{Task:'Question 2', Complete:'Complete', Images:["assets/7.png"]},
+				{Task:'Question 3', Complete:'Incomplete', Images:["assets/trash.png"]}
+			]);
+*/			
+			private function init(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'MATERIAL_TO_PREVIEW'), handleMaterialFullscreenRequest);
+				//getAllGroups.send();
+				
+				getAllGroups_resultHandler();
+			}
+			public function setTask(task:Object):void {
+				currentTask = task;
+				if(groupsLoaded)
+					refreshData(groupSelector.selectedIndex);
+			}
+			private function changeHandlerProgrammatic(event:FlexEvent):void {
+				if(groupsLoaded)
+					refreshData(groupSelector.selectedIndex);
+			} 
+			private function refreshData(selectedGroupIndex:int):void {
+				materialItemsT1.removeAllElements();
+				materialItemsT2.removeAllElements();
+				materialItemsT3.removeAllElements();
+				comment.text = "";
+				
+				var sceneArray:ArrayCollection = sciApp.tabBar.sceneBar.dataProvider as ArrayCollection;
+				var taskArray:ArrayCollection = sceneArray.getItemAt(sciApp.tabBar.taskBar.selectedIndex + 2).tasks as ArrayCollection;
+				
+				task1.text = task2.text = task3.text = "";
+				for(var taskNumber:int = 1; taskNumber <= taskArray.length; taskNumber++) {
+					this["task"+taskNumber].text = taskArray[taskNumber-1].label;
+				}
+				
+				//getSceneContributions.url = resourceManager.getString('resources', 'SERVER_URL') + "/sceneContributions/" + _groupList[selectedGroupIndex].id + "/" + currentTask.portFolioSceneId;
+				//getSceneContributions.send();
+				
+				getSceneContributions_resultHandler(selectedGroupIndex);
+				
+				//getTaskPortfolioComment.url = resourceManager.getString('resources', 'SERVER_URL') + "/finalPortfolioTaskComment/" + _groupList[selectedGroupIndex].id + "/" + currentTask.id;
+				//getTaskPortfolioComment.send();
+				
+				getTaskPortfolioComment_resultHandler(selectedGroupIndex);
+			}
+			
+			/**
+			 *
+			 * Result handling method for getSceneContributions service 
+			 * 
+			 **/
+			protected function getSceneContributions_resultHandler(selectedGroupIndex:int):void {
+				//store the returned object as JSON 
+				var contributions:Object;
+				
+				switch(_groupList[selectedGroupIndex].id) {
+					case '506c26ad42060774910aeba2':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 14:50:47 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "512f60b7b760cbc13cae6de7",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "-zjNzhNkhoo"    },    {      "postedAt" : "Thu Feb 28 15:08:08 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f64c8b760cbc13cae787d",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "pv2Bz4Ntfc4"    },    {      "postedAt" : "Thu Feb 28 15:18:14 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f6726b760cbc13cae7de4",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "JiRpgpzjpQw"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : [    {      "postedAt" : "Mon Mar 04 09:52:44 CET 2013",      "taskId" : "50ab4845300480c12ec3698b",      "id" : "513460dcb760cc1b80cc1b6d",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "Ho_Op49NJNk"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513dbc3db760127ff85bb6d3",      "fileName" : "8B221EC7-0123-4442-B654-853BB6CDF90E-167-0000001600D9566E.jpg",      "postedAt" : "Mon Mar 11 12:13:01 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dbc3db760127ff85bb6d4",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dbc3db760127ff85bb6d4",      "ypos" : 0    },    {      "id" : "513dbc65b760127ff85bb6f7",      "fileName" : "94067846-07D3-41DC-9706-6143954E5C94-167-0000001636D627A1.jpg",      "postedAt" : "Mon Mar 11 12:13:41 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dbc65b760127ff85bb6f8",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dbc65b760127ff85bb6f8",      "ypos" : 0    },    {      "id" : "513dbe5eb760127ff85bb71c",      "fileName" : "E4572E1C-08B1-4435-836C-D0932287D68C-167-000000190649462F.jpg",      "postedAt" : "Mon Mar 11 12:22:06 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dbe5eb760127ff85bb71d",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dbe5eb760127ff85bb71d",      "ypos" : 0    },    {      "id" : "513dbe87b760127ff85bb742",      "fileName" : "171E31E0-F254-463F-AC61-D86114D01FD6-167-0000001947EC84CF.jpg",      "postedAt" : "Mon Mar 11 12:22:47 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dbe87b760127ff85bb743",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dbe87b760127ff85bb743",      "ypos" : 0    },    {      "id" : "513dbeb2b760127ff85bb769",      "fileName" : "E73A4FA8-B4EE-46FE-88CA-D25226477178-167-0000001984EB49F0.jpg",      "postedAt" : "Mon Mar 11 12:23:30 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dbeb2b760127ff85bb76a",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dbeb2b760127ff85bb76a",      "ypos" : 0    },    {      "id" : "514b15a6b7601faedc031b4c",      "fileName" : "2FA15548-4EE4-464D-AC07-40A2FE968D9D-109-00000002444B91C1.jpg",      "postedAt" : "Thu Mar 21 15:13:58 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b15a6b7601faedc031b4d",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/514b15a6b7601faedc031b4d",      "ypos" : 0    },    {      "id" : "5146ca15b760127ff85cd839",      "fileName" : "47498BE7-4E49-4CEE-9E33-36B874AE50F1-126-0000000655FD675B.jpg",      "postedAt" : "Mon Mar 18 09:02:29 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5146ca15b760127ff85cd83a",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/5146ca15b760127ff85cd83a",      "ypos" : 0    }  ],  "svideos" : []}'));
+						}
+						break;
+					}
+						
+					case '506c24cf42060774910aeb92':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 15:08:06 CET 2013",      "taskId" : "50ab46d2300480c12ec3695d",      "id" : "512f64c6b760cbc13cae7866",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "H1km7AtornQ"    },    {      "postedAt" : "Mon Mar 18 08:52:21 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "5146c7b5b760127ff85cbf26",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "6QmKJZBhyKo"    },    {      "postedAt" : "Mon Mar 18 09:12:31 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "5146cc6fb760127ff85d410c",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "NgRhBmkVILg"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513dc455b760127ff85bbae1",      "fileName" : "ADF66979-ED08-4EAB-AF90-834399B037E4-143-0000001515F91019.jpg",      "postedAt" : "Mon Mar 11 12:47:33 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc455b760127ff85bbae2",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc455b760127ff85bbae2",      "ypos" : 0    },    {      "id" : "513dc482b760127ff85bbb08",      "fileName" : "C27526F0-01E2-4AB5-8CA0-500C8449D2C0-143-00000015583325AC.jpg",      "postedAt" : "Mon Mar 11 12:48:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc482b760127ff85bbb09",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc482b760127ff85bbb09",      "ypos" : 0    },    {      "id" : "513dc4a2b760127ff85bbb30",      "fileName" : "970D6C37-3CEF-46D7-9892-C2D695D18C97-143-00000015883CE0F2.jpg",      "postedAt" : "Mon Mar 11 12:48:50 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc4a2b760127ff85bbb31",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc4a2b760127ff85bbb31",      "ypos" : 0    },    {      "id" : "513dc553b760127ff85bbb59",      "fileName" : "19C5C91A-E2F8-4616-A8BE-69614EBDAD9D-143-00000016852CB4AA.jpg",      "postedAt" : "Mon Mar 11 12:51:47 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc553b760127ff85bbb5a",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc553b760127ff85bbb5a",      "ypos" : 0    },    {      "id" : "513dc578b760127ff85bbb83",      "fileName" : "EAA0AB1B-D1D6-46C9-AD10-23E1A317B341-143-00000016B9695648.jpg",      "postedAt" : "Mon Mar 11 12:52:24 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc578b760127ff85bbb84",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc578b760127ff85bbb84",      "ypos" : 0    },    {      "id" : "513dc9d6b760127ff85bbed0",      "fileName" : "A5AA5088-4F77-4646-A870-B090E83E8A1A-148-00000011EF261518.jpg",      "postedAt" : "Mon Mar 11 13:11:02 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc9d6b760127ff85bbed1",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc9d6b760127ff85bbed1",      "ypos" : 0    },    {      "id" : "513dc9fbb760127ff85bbefc",      "fileName" : "9E8EC63F-2D79-4948-9575-6AA082439027-148-000000123214755B.jpg",      "postedAt" : "Mon Mar 11 13:11:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc9fbb760127ff85bbefd",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc9fbb760127ff85bbefd",      "ypos" : 0    },    {      "id" : "514b12f0b7601faedc02f8ef",      "fileName" : "2B6E2EF9-858C-40B7-A557-43C42366E20B-104-000000035F8EC534.jpg",      "postedAt" : "Thu Mar 21 15:02:24 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b12f0b7601faedc02f8f0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b12f0b7601faedc02f8f0",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Mon Mar 18 09:42:04 CET 2013",      "taskId" : "50b72f4b3004f156c7166e44",      "id" : "5146d35cb760127ff85dda03",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "7bb7seMTYgY"    }  ]}'));
+						}
+						break;
+					}
+						
+					case '506c250342060774910aeb94':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "512e03d3b760ad6cf23ddda2",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23ddda3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23ddda3",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddb4",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddb5",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddb5",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddab",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddac",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddac",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 14:59:49 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "512f62d5b760cbc13cae75c9",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "IxRDJI8l8S0"    },    {      "postedAt" : "Thu Feb 28 15:10:03 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f653bb760cbc13cae7a76",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "mVNlxjj12us"    },    {      "postedAt" : "Thu Feb 28 15:26:02 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f68fab760cbc13cae86b8",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "IIAbcxeHD-w"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "51345ed3b760cc1b80cc1adc",      "fileName" : "48E01B78-455F-42F5-8EBF-DF8FE1867DFC-99-0000000720E173BE.jpg",      "postedAt" : "Mon Mar 04 09:44:03 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "51345ed3b760cc1b80cc1add",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4845300480c12ec3698b",      "isFinalPortfolio" : true,      "filePath" : "/image/51345ed3b760cc1b80cc1add",      "ypos" : 0    }  ],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513dd8ceb760127ff85bc214",      "fileName" : "7321CCDB-B31A-4553-ADF7-7EFE54B9CE52-148-000000158785A0BB.jpg",      "postedAt" : "Mon Mar 11 14:14:54 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dd8ceb760127ff85bc215",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dd8ceb760127ff85bc215",      "ypos" : 0    },    {      "id" : "513dd8f5b760127ff85bc238",      "fileName" : "399F6206-01E6-4705-9728-38FCC393D290-148-00000015B8F8F6CE.jpg",      "postedAt" : "Mon Mar 11 14:15:33 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dd8f5b760127ff85bc239",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dd8f5b760127ff85bc239",      "ypos" : 0    },    {      "id" : "513dd915b760127ff85bc25d",      "fileName" : "1C3ABFD2-AC64-4A60-AFEF-D99B0D56C50B-148-00000015E48E5162.jpg",      "postedAt" : "Mon Mar 11 14:16:05 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dd915b760127ff85bc25e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dd915b760127ff85bc25e",      "ypos" : 0    },    {      "id" : "513dd92cb760127ff85bc283",      "fileName" : "E15D2808-B2A5-46AD-8752-80E554039FA2-148-000000160DC7EEA7.jpg",      "postedAt" : "Mon Mar 11 14:16:28 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dd92cb760127ff85bc284",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dd92cb760127ff85bc284",      "ypos" : 0    },    {      "id" : "513dd95db760127ff85bc2d2",      "fileName" : "2DEB8497-B1B5-4C45-9D5E-B2FEA564D14B-148-0000001652AFE202.jpg",      "postedAt" : "Mon Mar 11 14:17:17 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dd95db760127ff85bc2d3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dd95db760127ff85bc2d3",      "ypos" : 0    },    {      "id" : "51499226b7601faedc016de6",      "fileName" : "99D3D6D5-531B-448F-8069-1EFFB21DACC1-142-000000084CF9ED9C.jpg",      "postedAt" : "Wed Mar 20 11:40:38 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "51499226b7601faedc016de7",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/51499226b7601faedc016de7",      "ypos" : 0    },    {      "id" : "514b0c18b7601faedc02b296",      "fileName" : "D94F06B5-4DEB-43D7-AB5C-28E2731F9633-90-00000001A9081F9D.jpg",      "postedAt" : "Thu Mar 21 14:33:12 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0c18b7601faedc02b297",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b0c18b7601faedc02b297",      "ypos" : 0    },    {      "id" : "514b0fa8b7601faedc02e319",      "fileName" : "1BE25A2B-20FE-48D7-831D-E48511BCAB08-90-000000034AEC28AE.jpg",      "postedAt" : "Thu Mar 21 14:48:24 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0fa8b7601faedc02e31a",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b0fa8b7601faedc02e31a",      "ypos" : 0    },    {      "id" : "514b1258b7601faedc02f812",      "fileName" : "C244EE9A-5EB9-4111-878C-EEAF5F11430D-141-000000072423D431.jpg",      "postedAt" : "Thu Mar 21 14:59:52 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b1258b7601faedc02f813",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b1258b7601faedc02f813",      "ypos" : 0    },    {      "id" : "514b1395b7601faedc02f9d3",      "fileName" : "CD7F0CB8-F181-4099-A534-6571607EF54B-141-00000008E55A8B0E.jpg",      "postedAt" : "Thu Mar 21 15:05:09 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b1395b7601faedc02f9d4",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b1395b7601faedc02f9d4",      "ypos" : 0    },    {      "id" : "514b13a5b7601faedc02faab",      "fileName" : "71A676B9-DA54-4509-B044-05A9B76542B2-141-00000009002990A0.jpg",      "postedAt" : "Thu Mar 21 15:05:25 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b13a5b7601faedc02faac",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b13a5b7601faedc02faac",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Mon Mar 18 09:00:48 CET 2013",      "taskId" : "50b72f4b3004f156c7166e44",      "id" : "5146c9b0b760127ff85cd273",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "Sh0UnySR0pc"    }  ]}'));
+						}
+						break;
+					}
+						
+					case '506c225442060774910aeb90':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 15:17:07 CET 2013",      "taskId" : "50ab46d2300480c12ec3695d",      "id" : "512f66e3b760cbc13cae7d5b",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "vkLP1_By98k"    },    {      "postedAt" : "Thu Feb 28 14:53:36 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "512f6160b760cbc13cae7227",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "wx6YI7InmvY"    },    {      "postedAt" : "Thu Feb 28 14:58:47 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f6297b760cbc13cae75ae",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "8ud_3YEIkDw"    },    {      "postedAt" : "Mon Mar 18 09:07:41 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "5146cb4db760127ff85d0e95",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "Qv9xWe1HwJ0"    },    {      "postedAt" : "Mon Mar 18 09:14:35 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "5146ccebb760127ff85d4c19",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "b4cGD7SMnOg"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "51345611b760cc1b80cc1787",      "fileName" : "BED6D91F-97B8-4DC7-9478-5A92C0CC6841-101-00000003FD24D907.jpg",      "postedAt" : "Mon Mar 04 09:06:41 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "51345611b760cc1b80cc1788",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4845300480c12ec3698b",      "isFinalPortfolio" : false,      "filePath" : "/image/51345611b760cc1b80cc1788",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Mon Mar 04 09:06:47 CET 2013",      "taskId" : "50ab4845300480c12ec3698b",      "id" : "51345617b760cc1b80cc179d",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "IAzCa6nBK_M"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513d8e69b760127ff85ba1fe",      "fileName" : "CA029760-DB88-4099-81A4-74EBBE2B27B2-131-00000011A5902612.jpg",      "postedAt" : "Mon Mar 11 08:57:29 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513d8e69b760127ff85ba1ff",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : false,      "filePath" : "/image/513d8e69b760127ff85ba1ff",      "ypos" : 0    },    {      "id" : "5146d065b760127ff85d932f",      "fileName" : "B0B25E89-D19C-4CC1-9972-F0ED7B19FCF7-106-0000001087C033FF.jpg",      "postedAt" : "Mon Mar 18 09:29:25 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5146d065b760127ff85d9330",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/5146d065b760127ff85d9330",      "ypos" : 0    }  ],  "svideos" : []}'));
+						}
+						break;
+					}
+						
+					case '506c24ee42060774910aeb93':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "512e03d3b760ad6cf23ddda2",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23ddda3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23ddda3",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddb4",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddb5",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddb5",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddab",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddac",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddac",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 15:11:06 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "512f657ab760cbc13cae7a81",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "IfaTyw4i_bY"    },    {      "postedAt" : "Thu Feb 28 15:20:52 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "512f67c4b760cbc13cae8128",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "E1X3ECedTsU"    },    {      "postedAt" : "Mon Mar 18 09:08:53 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "5146cb95b760127ff85d18df",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "cnR8un9VDSo"    },    {      "postedAt" : "Thu Feb 28 15:35:09 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f6b1db760cbc13cae96cb",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "WpthDooRrQw"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "5146cd8db760127ff85d5f5c",      "fileName" : "1D6B98EB-66FD-58CE-B914-7C93100F0D50.jpg",      "postedAt" : "Mon Mar 18 09:17:17 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5146cd8db760127ff85d5f5d",      "contentType" : "application/octet-stream",      "xpos" : 0,      "taskId" : "50ab488b300480c12ec369a8",      "isFinalPortfolio" : true,      "filePath" : "/image/5146cd8db760127ff85d5f5d",      "ypos" : 0    },    {      "id" : "5146cd99b760127ff85d5fe2",      "fileName" : "2E2E266C-BCEB-431A-7F29-7C935532BF20.jpg",      "postedAt" : "Mon Mar 18 09:17:29 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5146cd99b760127ff85d5fe3",      "contentType" : "application/octet-stream",      "xpos" : 0,      "taskId" : "50ab488b300480c12ec369a8",      "isFinalPortfolio" : true,      "filePath" : "/image/5146cd99b760127ff85d5fe3",      "ypos" : 0    }  ],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513dc09cb760127ff85bb7f7",      "fileName" : "33E3CCDF-461B-4B9A-8224-352DEB9C0258-143-00000012E939039A.jpg",      "postedAt" : "Mon Mar 11 12:31:40 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc09cb760127ff85bb7f8",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc09cb760127ff85bb7f8",      "ypos" : 0    },    {      "id" : "513dc0b4b760127ff85bb81e",      "fileName" : "532E6D56-350D-4E79-A1E6-99AB1F3E21E7-143-000000130845CAB5.jpg",      "postedAt" : "Mon Mar 11 12:32:04 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc0b4b760127ff85bb81f",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc0b4b760127ff85bb81f",      "ypos" : 0    },    {      "id" : "513dc0ccb760127ff85bb846",      "fileName" : "8197461D-BAE6-457D-9945-F1557964D6B5-143-000000132BB2D0CC.jpg",      "postedAt" : "Mon Mar 11 12:32:28 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc0ccb760127ff85bb847",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc0ccb760127ff85bb847",      "ypos" : 0    },    {      "id" : "513dc0ebb760127ff85bb86f",      "fileName" : "29168851-6B6B-488F-835F-AD6227FF95E3-143-0000001355027FC1.jpg",      "postedAt" : "Mon Mar 11 12:32:59 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc0ebb760127ff85bb870",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc0ebb760127ff85bb870",      "ypos" : 0    },    {      "id" : "513dc0fbb760127ff85bb899",      "fileName" : "DC5E2517-48E5-4D61-BC1D-2F62904865CA-143-0000001371955842.jpg",      "postedAt" : "Mon Mar 11 12:33:15 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc0fbb760127ff85bb89a",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc0fbb760127ff85bb89a",      "ypos" : 0    },    {      "id" : "513dc11db760127ff85bb8c4",      "fileName" : "B8FCB586-0EE0-42B0-BD4F-56D23D9128A3-143-000000139EFB7AE0.jpg",      "postedAt" : "Mon Mar 11 12:33:49 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc11db760127ff85bb8c5",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc11db760127ff85bb8c5",      "ypos" : 0    },    {      "id" : "514b0f24b7601faedc02df47",      "fileName" : "D5ECA93E-3E8E-4226-B109-8B933B872E84-132-00000006CFDF7981.jpg",      "postedAt" : "Thu Mar 21 14:46:12 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0f24b7601faedc02df48",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b0f24b7601faedc02df48",      "ypos" : 0    },    {      "id" : "514b0f3eb7601faedc02dfa9",      "fileName" : "AC2F6D61-B2A5-46F3-AC33-DD36DA58C0AD-132-00000006EEEB5D5B.jpg",      "postedAt" : "Thu Mar 21 14:46:38 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0f3eb7601faedc02dfaa",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/514b0f3eb7601faedc02dfaa",      "ypos" : 0    },    {      "id" : "513d8ecab760127ff85ba856",      "fileName" : "03AABAB7-0F25-453E-8C5E-07489AD147C8-151-000000107EF64889.jpg",      "postedAt" : "Mon Mar 11 08:59:06 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513d8ecab760127ff85ba857",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/513d8ecab760127ff85ba857",      "ypos" : 0    },    {      "id" : "5146d077b760127ff85d93c5",      "fileName" : "15B514DB-4B26-4EAE-9B61-CD567F192245-186-0000000BBE9CC0D9.jpg",      "postedAt" : "Mon Mar 18 09:29:43 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5146d077b760127ff85d93c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/5146d077b760127ff85d93c6",      "ypos" : 0    },    {      "id" : "514b0bd3b7601faedc02b0b1",      "fileName" : "6291B287-8A79-47C6-AB92-5686530D8D98-110-0000000211385E7C.jpg",      "postedAt" : "Thu Mar 21 14:32:03 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0bd3b7601faedc02b0b2",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/514b0bd3b7601faedc02b0b2",      "ypos" : 0    },    {      "id" : "514b0c0eb7601faedc02b25f",      "fileName" : "41D54373-1400-4986-BD6D-527B8249602D-110-00000002659D090A.jpg",      "postedAt" : "Thu Mar 21 14:33:02 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0c0eb7601faedc02b260",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/514b0c0eb7601faedc02b260",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Mon Mar 18 09:35:16 CET 2013",      "taskId" : "50b72f4b3004f156c7166e44",      "id" : "5146d1c4b760127ff85d9fd6",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "_WdT0s5rXl0"    }  ]}'));
+						}
+						break;
+					}
+						
+					case '506c24af42060774910aeb91':
+					{
+						if(currentTask.portFolioSceneId == "50ab4672300480c12ec36954") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "512e03d3b760ad6cf23ddda2",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23ddda3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23ddda3",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676a",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676b",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680a",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680b",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668bf",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c0",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab46d2300480c12ec3695d",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c0",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddb4",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddb5",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddb5",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c566770",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c566771",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c566771",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c566810",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c566811",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c566811",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c5",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c6",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4724300480c12ec36967",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c6",      "ypos" : 0    },    {      "id" : "512e03d3b760ad6cf23dddab",      "fileName" : "D2E647B8-5AA4-4160-A85C-61EEB927C0C8-1809-0000035E475F8F57.jpg",      "postedAt" : "Wed Feb 27 14:02:11 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "512e03d3b760ad6cf23dddac",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/512e03d3b760ad6cf23dddac",      "ypos" : 0    },    {      "id" : "5139e15ab760a9ae0c56676d",      "fileName" : "IMG_0898.jpeg",      "postedAt" : "Fri Mar 08 14:02:18 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e15ab760a9ae0c56676e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e15ab760a9ae0c56676e",      "ypos" : 0    },    {      "id" : "5139e167b760a9ae0c56680d",      "fileName" : "IMG_0899.jpeg",      "postedAt" : "Fri Mar 08 14:02:31 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e167b760a9ae0c56680e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e167b760a9ae0c56680e",      "ypos" : 0    },    {      "id" : "5139e16fb760a9ae0c5668c2",      "fileName" : "IMG_0900.jpeg",      "postedAt" : "Fri Mar 08 14:02:39 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "5139e16fb760a9ae0c5668c3",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab4779300480c12ec36972",      "isFinalPortfolio" : false,      "filePath" : "/image/5139e16fb760a9ae0c5668c3",      "ypos" : 0    }  ],  "svideos" : [    {      "postedAt" : "Thu Feb 28 14:40:55 CET 2013",      "taskId" : "50ab46d2300480c12ec3695d",      "id" : "512f5e67b760cbc13cae6b1d",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "bFF4KQMdbrI"    },    {      "postedAt" : "Thu Feb 28 15:14:23 CET 2013",      "taskId" : "50ab46d2300480c12ec3695d",      "id" : "512f663fb760cbc13cae7c71",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "pj8jX8fGG1E"    },    {      "postedAt" : "Mon Mar 18 09:29:30 CET 2013",      "taskId" : "50ab4724300480c12ec36967",      "id" : "5146d06ab760127ff85d9384",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : false,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "a33SpQs9--8"    },    {      "postedAt" : "Thu Feb 28 15:18:41 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f6741b760cbc13cae7e83",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "cV4QfaFKOso"    },    {      "postedAt" : "Thu Feb 28 15:26:03 CET 2013",      "taskId" : "50ab4779300480c12ec36972",      "id" : "512f68fbb760cbc13cae86c4",      "isPortfolio" : true,      "title" : "Miracle 2013",      "isFinalPortfolio" : true,      "ypos" : 0,      "scomments" : null,      "xpos" : 0,      "uri" : "Jm88fy-FYN8"    }  ]}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab47d7300480c12ec3697e") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab4863300480c12ec36999") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [],  "svideos" : []}'));
+						}
+						else if(currentTask.portFolioSceneId == "50ab48bf300480c12ec369db") {
+							contributions = com.adobe.serialization.json.JSON.decode(new String('{  "simages" : [    {      "id" : "513dc218b760127ff85bba3a",      "fileName" : "8D7CA68E-004F-4152-832E-07F5CF0CB90E-148-00000006EA485F61.jpg",      "postedAt" : "Mon Mar 11 12:38:00 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc218b760127ff85bba3b",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/513dc218b760127ff85bba3b",      "ypos" : 0    },    {      "id" : "513dc24eb760127ff85bba7d",      "fileName" : "6F60C2C4-7083-4375-9DE5-CE04EA6389EE-148-00000007378B3FDB.jpg",      "postedAt" : "Mon Mar 11 12:38:54 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513dc24eb760127ff85bba7e",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : false,      "filePath" : "/image/513dc24eb760127ff85bba7e",      "ypos" : 0    },    {      "id" : "514b0fb3b7601faedc02e482",      "fileName" : "B72CAC7C-8E16-46A7-A7F1-A6A6A49EC9CE-118-000000024436CE47.jpg",      "postedAt" : "Thu Mar 21 14:48:35 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "514b0fb3b7601faedc02e483",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50ab48ee300480c12ec369ee",      "isFinalPortfolio" : true,      "filePath" : "/image/514b0fb3b7601faedc02e483",      "ypos" : 0    },    {      "id" : "513d8d33b760127ff85b9690",      "fileName" : "4DCBE7A2-6283-46AA-8D41-7C9C12D991EA-138-00000010FB2E1594.jpg",      "postedAt" : "Mon Mar 11 08:52:19 CET 2013",      "isPortfolio" : true,      "scomments" : null,      "fileId" : "513d8d33b760127ff85b9691",      "contentType" : "image/jpeg",      "xpos" : 0,      "taskId" : "50b72f4b3004f156c7166e44",      "isFinalPortfolio" : true,      "filePath" : "/image/513d8d33b760127ff85b9691",      "ypos" : 0    }  ],  "svideos" : []}'));
+						}
+						break;
+					}
+				}
+				
+				parseMaterialSubArray(contributions.svideos, VIDEO_TYPE);
+				parseMaterialSubArray(contributions.simages, IMAGE_TYPE);
+			}
+			/**
+			 *
+			 * Parsing method to assign retrieved material to a correct preview item
+			 * 
+			 **/
+			protected function parseMaterialSubArray(subArray:Array, materialType:String):void {
+				var newItem:MaterialsItem;
+				var materialGroup:int;
+				
+				var sceneArray:ArrayCollection = sciApp.tabBar.sceneBar.dataProvider as ArrayCollection;
+				var taskArray:ArrayCollection = sceneArray.getItemAt(sciApp.tabBar.taskBar.selectedIndex + 2).tasks as ArrayCollection;
+
+				//extract materials
+				for each (var material:Object in subArray) {
+					var newTaskId:String = material.taskId;
+					
+					for(var i:int = 0; i<taskArray.length; i++) {
+						if(taskArray[i].taskId == material.taskId)
+							materialGroup = i+1;
+					}
+					
+					if(material.isFinalPortfolio) {
+						newItem = new MaterialsItem();
+						newItem.sourceType = PORTFOLIO_TYPE;
+						newItem.isFinalPortfolio = material.isFinalPortfolio;
+						newItem.isPortfolio = material.isPortfolio;
+						newItem.xpos = material.xpos;
+						newItem.ypos = material.ypos;
+						newItem.scaleX = 1.2;
+						newItem.scaleY = 1.2;
+						newItem.deleter.visible = false;
+						newItem.deleter.includeInLayout = false;
+						
+						this["materialItemsT"+materialGroup].addElement(newItem);
+						
+						//assign id
+						newItem.id = material.id;
+						
+						//pick correct preview type
+						switch(materialType) {
+							case VIDEO_TYPE:
+								newItem.setupPreview(VIDEO_TYPE, material.uri, resourceManager.getString('resources', 'YOUTUBE_BASE_IMAGE_URL')+material.uri+"/1.jpg");
+								break;
+							case IMAGE_TYPE:
+								newItem.setupPreview(IMAGE_TYPE, resourceManager.getString('resources', 'SERVER_URL')+material.filePath, resourceManager.getString('resources', 'SERVER_URL')+material.filePath);
+								break;
+						}
+					}
+				}
+			}
+			/**
+			 *
+			 * Result handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_resultHandler():void {
+				//store the returned object as JSON
+				var res:Object = com.adobe.serialization.json.JSON.decode(new String('[  {    "colour" : "0x000000",    "id" : "506c21c742060774910aeb8b",    "name" : "LÆRER"  },  {    "colour" : "0x4ACBED",    "id" : "506c250342060774910aeb94",    "name" : "BLÅ"  },  {    "colour" : "0xFF3388",    "id" : "506c24af42060774910aeb91",    "name" : "ROSA"  },  {    "colour" : "0x811E78",    "id" : "506c24cf42060774910aeb92",    "name" : "LILLA"  },  {    "colour" : "0x6A6D6E",    "id" : "506c225442060774910aeb90",    "name" : "GRÅ"  },  {    "colour" : "0x89BD46",    "id" : "506c24ee42060774910aeb93",    "name" : "GRØNN"  },  {    "colour" : "0xFF9736",    "id" : "506c26ad42060774910aeba2",    "name" : "ORANSJE"  }]'));
+				
+				//instantiate and build group array
+				_groupList = new ArrayCollection();
+				for each (var act:Object in res) {
+					// Exclude the teacher from this listing
+					if(act.id != "506c21c742060774910aeb8b")
+						_groupList.addItem({label: act.name, id: act.id, color: act.colour});
+				}
+				
+				//ordering the list alphabetically
+				var sortfield:SortField = new SortField();
+				sortfield.name = "label";
+				sortfield.descending = false;
+				
+				var sort:Sort = new Sort();
+				sort.fields = [sortfield];
+				
+				_groupList.sort = sort;
+				_groupList.refresh();
+				
+				groupSelector.selectedIndex = 0;
+				groupsLoaded = true;
+			//	refreshData(0);
+			}
+			/**
+			 *
+			 * Error handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT4, "Group service error");
+			}
+			/**
+			 * 
+			 * Error handling method for getSceneContributions service
+			 * 
+			 **/
+			protected function getSceneContributions_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT5, "SceneContribution service error");
+			}
+			
+			/**
+			 * 
+			 * Error handling method for getTaskPortfolioComment service
+			 * 
+			 **/
+			protected function getTaskPortfolioComment_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT6, "TaskPortfolioComment service error");
+			}
+			
+			/**
+			 *
+			 * Result handling method for getTaskPortfolioComment service 
+			 * 
+			 **/
+			protected function getTaskPortfolioComment_resultHandler(selectedGroupIndex:int):void {
+				var comments:Array = new Array();
+				
+				switch(_groupList[selectedGroupIndex].id) {
+					case '506c26ad42060774910aeba2':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						break;
+					}
+						
+					case '506c24cf42060774910aeb92':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						break;
+					}
+						
+					case '506c250342060774910aeb94':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Wed Mar 20 11:14:07 CET 2013",    "taskId" : "50c6f80cb76016438b30878a",    "id" : "51498befb7601faedc014583",    "text" : "Dette er et spill hvor man skal stabilisere temperaturen inne i huset ved hjelp av en virtuell varmepumpe. Man snurrer på en sveiv for enten å gjøre det varmere eller kaldere inne i huset. Når temperaturen ute er høyere enn 18 grader (ønskelig temperatur inne i huset) sveiver man motsatt vei av den veien man sveiver når temperaturen ute er kaldere enn 18 grader. Jo lengre bort fra 18 grader, desto fortere må man sveive. Sveiven representerer kompressoren som blir påvirket på samme måte."  }]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Wed Mar 20 11:16:03 CET 2013",    "taskId" : "50c6f83fb76016438b3087a5",    "id" : "51498c63b7601faedc0149dd",    "text" : "Se under simuleringsfane."  }]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						break;
+					}
+						
+					case '506c225442060774910aeb90':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Mon Mar 18 09:45:29 CET 2013",    "taskId" : "50c6f83fb76016438b3087a5",    "id" : "5146d429b760127ff85df622",    "text" : "Svar til spm. 1 - Varmeoverføring:Når det er varmt ute vil varmepumpen, eller airconditionen gjøre det kaldt inne. Når det er kaldt ute, vil varmpepumpen gjøre det varmt inne.Svar til spm. 1 - Komponenter:Varmepumpen består av en kompressor, en kondensator, en reduksjonsventil og en fordamper. I kompressoren blir luften trykket sammen av en pumpe. Trykket øker, og derfor blir luften varmere. Luften går deretter videre gjennom kondensatoren. Kondensatoren er et nettverk av tynne rør, og disse rørene blir varmet opp av luften. Rørene varmer så opp omgivelsene. Omgivelsene kan også kjøler ned rørene. Luften blir flytende, den kondenserer. Etter dette går luften gjennom reduksjonsventilen, og trykket synker. Her fordamper luften delvis, og det blir en blanding mellom gass og flytende væske, og blir kaldere. Etter at luften har gått igjennom reduksjonsventilen, går den videre til fordamperen. Fordamperen avkjøler omgivelsene, eller at omgivelsene varmer opp fordamperen. Luften fordamper helt. Svar til spm.2 - Komponenter:Først kommer det luft i fordamperen som har lite trykk, deretter kondenserer den og går gjennom kompressoren slik at det blir mer trykk. Også frigjører den energi som gjør det varmt i huset. Svar til spm. 1 - Trykkvariasjoner:I fordamperen er det like høy temperatur som det er ute og det er lite trykk. også fordamper det til kompressoren og den øker trykket. i kondensatoren er det høyt trykk og det er like høy temperatur som det er ute."  }]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Mon Mar 18 09:40:51 CET 2013",    "taskId" : "50c6f85bb76016438b3087c1",    "id" : "5146d313b760127ff85dcfce",    "text" : "Vi satte sykkelpumperen på kompressoren fordi trykket øker og det samme skjer med temperaturen.Vi satte sprøyten på fordamperen fordi trykket inni sprøyten letter som gjør at kokepunkte blir lavere og derfor fordamper det.Vi satte både sprøyten og sprayboksen på reduksjonsventilen fordi det blir lavere trykk i begge. Og det fører til "  }]'));
+						}
+						break;
+					}
+						
+					case '506c24ee42060774910aeb93':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Wed Mar 20 18:09:32 CET 2013",    "taskId" : "50c6f83fb76016438b3087a5",    "id" : "5149ed4cb7601faedc01a6d0",    "text" : ""  }]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						break;
+					}
+						
+					case '506c24af42060774910aeb91':
+					{
+						if(currentTask.taskId == "50c6f7c0b76016438b308770") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f80cb76016438b30878a") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[  {    "postedAt" : "Thu Mar 21 14:44:41 CET 2013",    "taskId" : "50c6f80cb76016438b30878a",    "id" : "514b0ec9b7601faedc02d1c8",    "text" : "her fikk vi desverre ikke tatt noen video"  }]'));
+						}
+						else if(currentTask.taskId == "50c6f83fb76016438b3087a5") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						else if(currentTask.taskId == "50c6f85bb76016438b3087c1") {
+							comments = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						}
+						break;
+					}
+				}
+				
+				if(comments.length > 0)
+					comment.text = comments[0].text;
+			}
+			/**
+			 * 
+			 * Event handling method for MATERIAL_TO_PREVIEW
+			 * 
+			 **/
+			protected function handleMaterialFullscreenRequest(evt:MaterialToPreviewEvent):void {
+				var stfe:ShowFullscreenEvent = new ShowFullscreenEvent(resourceManager.getString('resources', 'SHOW_FULLSCREEN'), true);
+				stfe.shouldShow = true;
+				stfe.mode = "picsvids";
+				stfe.showPullOutMenu = false;
+				stfe.material = evt.materialItem;
+				dispatchEvent(stfe);
+			}
+
+		]]>
+	</fx:Script> 
+	
+	<!--s:ButtonBar id="groupSelector" width="100%" labelField="title" dataProvider="_groupList" skinClass="skins.taskOverviewButtonBarSkin" buttonMode="true" requireSelection="true" /-->
+	<s:TabBar id="groupSelector" width="{this.width}" dataProvider="{_groupList}" top="-21" skinClass="skins.groupTabBarSkin" valueCommit="changeHandlerProgrammatic(event)" requireSelection="true">
+		<s:filters>
+			<s:DropShadowFilter 
+				distance="3" alpha=".3" blurX="7" blurY="7"
+				angle="90" />
+		</s:filters>
+	</s:TabBar>
+	<s:VGroup width="100%" height="100%" top="20" gap="15">
+		<s:Group id="materials" width="100%" height="60%" >
+			<s:layout>
+				<s:VerticalLayout variableRowHeight="false" rowHeight="85"/> 
+			</s:layout>
+			<s:VGroup>
+				<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#EEEEEE" />
+							<s:GradientEntry color="#FFFFFF" />
+							<s:GradientEntry color="#FFFFFF" />
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+				<s:Label id="task1" text="Task 1" />
+				<s:Scroller top="5" right="5" bottom="5" left="5">
+					<s:HGroup id="materialItemsT1" />
+				</s:Scroller>
+			</s:VGroup>
+			<s:VGroup>
+				<s:Rect id="backgroundRect2" left="0" right="0" top="0" bottom="0">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#EEEEEE" />
+							<s:GradientEntry color="#FFFFFF" />
+							<s:GradientEntry color="#FFFFFF" />
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+				<s:Label id="task2" text="Task 2" />
+				<s:Scroller top="5" right="5" bottom="5" left="5">
+					<s:HGroup id="materialItemsT2" />
+				</s:Scroller>
+			</s:VGroup>
+			<s:VGroup>
+				<s:Rect id="backgroundRect3" left="0" right="0" top="0" bottom="0">
+					<s:fill>
+						<s:LinearGradient rotation="90">
+							<s:GradientEntry color="#EEEEEE" />
+							<s:GradientEntry color="#FFFFFF" />
+							<s:GradientEntry color="#FFFFFF" />
+						</s:LinearGradient>
+					</s:fill>
+				</s:Rect>
+				<s:Label id="task3" text="Task 3" />
+				<s:Scroller top="5" right="5" bottom="5" left="5">
+					<s:HGroup id="materialItemsT3"/>
+				</s:Scroller>
+			</s:VGroup>
+		</s:Group>
+		<s:VGroup width="100%">
+			<s:Label text="Beskrivelse" />
+			<s:TextArea id="comment" editable="false" width="100%" height="80%" borderAlpha=".3"/>
+		</s:VGroup>
+	</s:VGroup>
+</s:Group>

@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationPolicy="all" width="{calculatedWidth}" creationComplete="creationCompleteHandler(event)" borderVisible="false" minHeight="30" maxWidth="210" cornerRadius="5" xmlns:xmpp="com.seesmic.as3.xmpp.*">
+	
+	<fx:Declarations>
+		<fx:Object id="data" />
+		<xmpp:XMPP id="conn" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.seesmic.as3.xmpp.XMPP;
+			
+			import listeners.TweetCreatorEvent;
+			import listeners.TweetUpdaterEvent;
+			
+			import mx.core.Application;
+			import mx.events.FlexEvent;
+			import mx.managers.CursorManager;
+			
+			import spark.components.Group;
+			
+			private var oldX:Number;
+			private var oldY:Number;
+			
+			[Bindable]
+			[Embed(source="assets/drag.png")]
+			private var DragIcon:Class;
+			
+			private var cursorId:int;
+			private var _teacherMode:Boolean = false;
+			private var refreshTimer:Number;
+			
+			[Bindable] private var ownerColor:uint;
+			[Bindable] private var calculatedWidth:Number;
+			
+			/**
+			 *
+			 * Called when itemrenderer creation is complete
+			 * 
+			 **/
+			
+			protected function creationCompleteHandler(event:FlexEvent):void {
+				if(_teacherMode && data.ownerName == null) {
+					this.setStyle("backgroundColor", sciwork.getColorBasedOnGroup(sciwork.cleanGroupName(data.from.toUpperCase()).toLowerCase()));
+					data.text = this.extractText(data.bdy);
+				}
+				else {
+					this.setStyle("backgroundColor", sciwork.getColorBasedOnGroup(sciwork.cleanGroupName(data.ownerName.toUpperCase()).toLowerCase()));
+
+					//make this thingy draggable
+					enableListeners(true);
+					
+					calculatedWidth = this.parent.width*.2;
+					this.x = (data.xpos*this.parent.width) / 100;
+					this.y = (data.ypos*this.parent.height) / 100;
+				}
+				//build context menu to trash/restore tweets
+				var cm:ContextMenu = new ContextMenu();
+				cm.hideBuiltInItems();
+				var selectMI:ContextMenuItem = new ContextMenuItem("");
+				if(data.isVisible) {
+					selectMI.label = "Delete";
+				}
+				selectMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, selectMIHandler);
+				
+				//add the menu items to the right click menu
+				cm.customItems.push(selectMI);
+				
+				//enable the right click menu
+				this.contextMenu = cm;
+				
+				
+				if(teacherMode) {
+					bodyText.text = data.text;
+				}
+				else {
+					bodyText.text = data.text.text;
+				}
+				
+				//this.width = bodyText.measuredWidth + 30;
+				
+				
+			}
+			public function set teacherMode(m:Boolean):void {
+				_teacherMode = m;
+				
+			}
+			public function get teacherMode():Boolean {
+				return _teacherMode;
+			}
+			/**
+			 *
+			 * Called when addToPortfolioMI item is clicked
+			 * 
+			 **/
+			protected function addToPortfolioMIHandler(event:ContextMenuEvent):void {
+				data.isPortfolio = !data.isPortfolio;
+				updateTweet();
+			}
+			
+			/**
+			 *
+			 * Function to enable/disable listeners
+			 * 
+			 **/
+			protected function enableListeners(b:Boolean):void {
+				if(b) {
+					this.addEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler, false, 0, false);
+					this.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler, false, 0, false);
+					this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler, false, 0, false);
+					this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, false, 0, false);
+				}
+				else {
+					this.removeEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler);
+					this.removeEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
+					this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
+					this.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+				}
+			}
+			
+			public function teacherDrag(b:Boolean):void {
+				enableListeners(!b);
+				if(b) {
+					this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandlerTeacherDrag);
+					this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandlerTeacherDrag);
+				}
+				else {
+					this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandlerTeacherDrag);
+					this.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandlerTeacherDrag);
+				}
+			}
+			/**
+			 *
+			 * Called when mouse is pressed on this item as teacher begins a drag
+			 * 
+			 **/
+			protected function mouseDownHandlerTeacherDrag(event:MouseEvent):void {
+				this.startDrag();
+			}
+			/**
+			 *
+			 * Called when mouse is released on this item as teacher begins a drag
+			 * 
+			 **/
+			protected function mouseUpHandlerTeacherDrag(event:MouseEvent):void {
+				// Remove from high level component (used for dragging), if successfully created on server it will be added to the presentationGroupArea component.
+				
+				var fsp:FullScreenPresentation = mx.core.FlexGlobals.topLevelApplication.fullScreenPresentation;
+				
+				fsp.removeElement(this);
+				var p:Point = new Point(this.x, this.y);
+				p = fsp.localToGlobal(p);
+				p = fsp.presentationGroupArea.globalToLocal(p);
+				this.x = p.x;
+				this.y = p.y;
+				data.xpos = Math.floor((this.x * 100) / fsp.presentationGroupArea.width);
+				data.ypos = Math.floor((this.y * 100) / fsp.presentationGroupArea.height);
+				data.isVisible = true;
+				this.stopDrag();
+				addNewTweet();
+			}
+			/**
+			 *
+			 * Called when mouse is pressed on this item
+			 * 
+			 **/
+			protected function mouseDownHandler(event:MouseEvent):void {
+				//bump to top
+				(this.parent as Group).setElementIndex(this, (this.parent as Group).numElements-1);
+				
+				//we log the old X and Y, in case the service cannot accept the move
+				oldX = this.x;
+				oldY = this.y;
+				
+				//start dragging
+				this.startDrag(false, new Rectangle(0, 0, this.parent.width-this.width, this.parent.height-this.height));
+			}
+			
+			/**
+			 *
+			 * Called when mouse is released on this item
+			 * 
+			 **/
+			protected function mouseUpHandler(event:MouseEvent):void {
+				//stop dragging
+				this.stopDrag();
+				
+				data.xpos = Math.floor((this.x * 100) / this.parent.width);
+				data.ypos = Math.floor((this.y * 100) / this.parent.height);
+				
+				updateTweet();
+			}
+			
+			/**
+			 *
+			 * Function to handle the tweet update. stop the listeners and calls the static update class
+			 * 
+			 **/
+			protected function updateTweet():void {
+				enableListeners(false);
+				
+				var tu:TweetUpdater = new TweetUpdater();
+				tu.addEventListener(TweetUpdaterEvent.UPDATE_SUCCESSFUL, handleUpdateSuccessful);
+				tu.addEventListener(TweetUpdaterEvent.UPDATE_FAILED, handleUpdateFailure);
+				if(_teacherMode)
+					tu.postTweetToService(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/teacherTweet", data);
+				else
+					tu.postTweetToService(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/tweet", data);
+			}
+			
+			/**
+			 *
+			 * Called when the tweetUpdater is successful
+			 * 
+			 **/
+			protected function handleUpdateSuccessful(evt:TweetUpdaterEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(new String(evt.result));
+				conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+new String(res.tag)+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
+				enableListeners(true);	
+				CursorManager.removeAllCursors();
+			}
+			
+			
+			/**
+			 *
+			 * Called when the tweetUpdater fails
+			 * 
+			 **/
+			protected function handleUpdateFailure(evt:TweetUpdaterEvent):void {
+				//something went wrong with the service, reposition the item to its last known position
+				this.x = oldX;
+				this.y = oldY;
+				enableListeners(true);
+			}
+			/**
+			 *
+			 * Function to handle adding new tweet
+			 * 
+			 **/
+			protected function addNewTweet():void {
+				var tc:TweetCreator = new TweetCreator();
+				tc.addEventListener(TweetCreatorEvent.CREATE_SUCCESSFUL, handleAddNewSuccessful);
+				tc.addEventListener(TweetCreatorEvent.CREATE_FAILED, handleAddNewFailure);
+				
+				var newTweetObject:Object = new Object();
+				newTweetObject.xpos = data.xpos;
+				newTweetObject.ypos = data.ypos;
+				newTweetObject.taskId = data.qId;
+				newTweetObject.ownerName = data.from;
+				newTweetObject.isVisible = data.isVisible;
+				newTweetObject.text = extractText(data.bdy);
+				
+				if(_teacherMode)
+					tc.postTweetToService(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/teacherTweet", newTweetObject);
+				else
+					tc.postTweetToService(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/tweet", data);
+			}
+			
+			/**
+			 *
+			 * Called when the tweetAddNew is successful
+			 * 
+			 **/
+			protected function handleAddNewSuccessful(evt:TweetCreatorEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(new String(evt.result));
+				//conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+new String(res.tag)+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
+				enableListeners(true);	
+				CursorManager.removeAllCursors();
+				data.id = res.id;
+				data.text = res.text;
+				mx.core.FlexGlobals.topLevelApplication.fullScreenPresentation.presentationGroupArea.addElement(this);
+				teacherDrag(false);
+			}
+			
+			
+			/**
+			 *
+			 * Called when the tweetAddNew fails
+			 * 
+			 **/
+			protected function handleAddNewFailure(evt:TweetCreatorEvent):void {
+				//something went wrong with the service, reposition the item to its last known position
+				this.x = oldX;
+				this.y = oldY;
+				enableListeners(true);
+			}
+			/**
+			 *
+			 * Called when mouse rolls over this item
+			 * 
+			 **/
+			protected function mouseOverHandler(event:MouseEvent):void {
+				cursorId = CursorManager.setCursor(DragIcon);
+			}
+			
+			/**
+			 *
+			 * Called when rolls out of this item
+			 * 
+			 **/
+			protected function mouseOutHandler(event:MouseEvent):void {
+				CursorManager.removeCursor(cursorId);
+			}
+			
+			/**
+			 *
+			 * Called when double-click on this item occurs
+			 * 
+			 **/
+			protected function selectMIHandler(event:ContextMenuEvent):void {
+				data.isVisible = !data.isVisible;
+				updateTweet();
+			}
+			
+			/**
+			 *
+			 * Function to extract the text from the JSON body
+			 * 
+			 **/
+			protected function extractText(bdy:String):String {
+				var txt:String = bdy;
+				
+				//need a try/catch as it is expected to receive a JSON formatted object
+				try {
+					var res:Object = com.adobe.serialization.json.JSON.decode(bdy);
+					txt = new String(res.text);
+				}
+				catch(error:Error) {
+					//there is no need to handle the error as of now
+				}
+				
+				return txt;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:HGroup left="10" right="10" top="10" bottom="10">
+		<s:Label id="bodyText" color="#FFFFFF" width="100%" textAlign="left" />
+	</s:HGroup>
+	<s:filters>
+		<s:DropShadowFilter 
+			distance="3" alpha=".6" blurX="4" blurY="4"
+			angle="90" />
+	</s:filters>
+</s:BorderContainer>

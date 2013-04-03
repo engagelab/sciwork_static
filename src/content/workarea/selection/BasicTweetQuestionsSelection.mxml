@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:components="components.*" gap="0" xmlns:selection="content.workarea.selection.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import itemRenderers.TweetItemDragDrop;
+			
+			import listeners.ObjectDropEvent;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.core.NavigationUnit;
+			
+			private var _teacherMode:Boolean = false;
+			
+			/**
+			 * 
+			 * public function to force scroll down on the list component
+			 * 
+			 **/
+			protected function scrollToBottom():void {
+				var delta:Number = 0;
+				var count:int = 0;
+				
+				while (count++ < 10){
+					feedList.validateNow();
+					delta = feedList.layout.getVerticalScrollPositionDelta(NavigationUnit.END);
+					feedList.layout.verticalScrollPosition += delta;
+					
+					if (delta == 0) {
+						break;						
+					}
+				}
+			}	
+			
+			/**
+			 * 
+			 * update the list of displayed tweets in the livefeed based on hash filters
+			 * 
+			 **/
+			public function refreshFeed(qId:String, fArray:ArrayCollection, isTweetWithoutID:Boolean=false):void {
+				var feedToDisplay:ArrayCollection = new ArrayCollection();
+				
+				for each (var tweet:Object in fArray) {
+					if(isTweetWithoutID)
+						tweet.qId = qId;
+					if(new String(tweet.qId) == qId) {
+						feedToDisplay.addItem(tweet);
+					}
+				}
+								
+				feedList.dataProvider = feedToDisplay;
+				scrollToBottom();
+			}
+			
+			public function set teacherMode(m:Boolean):void {
+				_teacherMode = m;
+				if(m)
+					feedList.itemRenderer = new ClassFactory( itemRenderers.TweetItemDragDrop );
+			}
+			public function get teacherMode():Boolean {
+				return _teacherMode;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<components:SelectionHeader id="selectionheader" width="100%" height="23" currentState="tweets"/>
+	<s:BorderContainer width="100%" height="100%" borderAlpha=".3" borderWeight="2">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="#EEEEEE" />
+					<s:GradientEntry color="#FFFFFF" />
+					<s:GradientEntry color="#FFFFFF" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:List id="feedList" top="10" left="10" right="10" bottom="10" contentBackgroundAlpha="0" horizontalScrollPolicy="off" borderVisible="false" itemRenderer="itemRenderers.TweetItem">
+			<s:layout>
+				<s:VerticalLayout gap="2" horizontalAlign="contentJustify" variableRowHeight="true" />
+			</s:layout>
+		</s:List>
+	</s:BorderContainer>
+	
+</s:VGroup>

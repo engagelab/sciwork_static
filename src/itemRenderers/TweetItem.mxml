@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="false" width="100%" minHeight="30" creationComplete="itemrenderer1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import components.Tweet;
+			
+			import flash.utils.clearInterval;
+			import flash.utils.setInterval;
+			
+			import listeners.RetweetEvent;
+			
+			import mx.effects.Tween;
+			import mx.events.FlexEvent;
+			
+			[Bindable] private var groupColor:uint = 0xCCCCCC;
+			[Bindable] private var callOut:Boolean = true;
+			
+			private var refreshTimer:Number;
+			
+			/**
+			 * 
+			 * function to enable or not retweet and gives correct background color to the whole element
+			 * 
+			 * 
+			 **/
+			protected function initRenderer():void {
+				var groupName:String = new String(data.from).toLowerCase();
+				groupColor = sciwork.getColorBasedOnGroup(sciwork.cleanGroupName(groupName.toUpperCase()).toLowerCase());
+				//callOut = sciwork.getIndexBasedOnGroup(sciwork.cleanGroupName(groupName.toUpperCase()).toLowerCase());
+				
+				if(data.isRetweetable) {
+					var group:Object = mx.core.FlexGlobals.topLevelApplication.currentGroup;
+					var cm:ContextMenu = new ContextMenu();
+					cm.hideBuiltInItems();
+					var retweetMI:ContextMenuItem = new ContextMenuItem("");
+					retweetMI.label = "Re-tweet";
+					retweetMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, retweetHandler);
+					cm.customItems.push(retweetMI);
+					this.contextMenu = cm;
+				}
+				
+				
+			}
+
+			/**
+			 *
+			 * Called when addToPortfolioMI item is clicked
+			 * 
+			 **/
+			protected function retweetHandler(event:ContextMenuEvent):void {
+				var rte:RetweetEvent = new RetweetEvent(resourceManager.getString('resources', 'RE_TWEET'), true);
+				rte.originGroup = data.from;
+				rte.tweetContent = bdy.text;
+				dispatchEvent(rte);
+			}
+			
+			
+			/**
+			 *
+			 * Function to extract the text from the JSON body
+			 * 
+			 **/
+			protected function extractText():void {
+				clearInterval(refreshTimer);
+				/*var txt:String = "";
+				
+				try {
+					var res:Object = com.adobe.serialization.json.JSON.decode(data.bdy);
+					txt = new String(res.text);
+				}
+				catch(error:Error) {
+				}*/
+				
+				bdy.text = data.bdy.text;
+				
+				initRenderer();
+				
+				//return txt;
+			}
+			
+			protected function itemrenderer1_creationCompleteHandler(event:FlexEvent):void
+			{
+				trace();
+				refreshTimer = setInterval(extractText, 1000);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:filters>
+		<s:DropShadowFilter 
+			distance="3" alpha=".6" blurX="4" blurY="4"
+			angle="90" />
+	</s:filters>
+	
+	<s:Rect left="5" right="5" top="5" bottom="10" radiusX="3" radiusY="3">
+		<s:fill>
+			<s:SolidColor id="itemBackground" alpha="{data.al}" color="{groupColor}" />
+		</s:fill>
+	</s:Rect>
+	
+	<s:VGroup top="10" right="10" bottom="20" left="10" >
+		<!--s:Label text="{data.from+':'}" width="100%" color="#FFFFFF" /-->
+		<s:Label fontSize="11" id="bdy" width="100%" height="100%" color="#FFFFFF" />
+	</s:VGroup>
+</s:ItemRenderer>

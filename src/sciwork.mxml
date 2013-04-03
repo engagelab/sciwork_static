@@ -1,0 +1,672 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:local="*" applicationComplete="initApp(event)" showStatusBar="false" xmlns:components="components.*" backgroundColor.loggedIn="#F3F3F3">
+	
+	<fx:Metadata>
+		[ResourceBundle("resources")]
+	</fx:Metadata>
+	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace local "*";
+		
+		s|List s|VScrollBar {
+			skinClass: ClassReference("skins.animatorVerticalScrollBar");
+		}
+		
+		s|HScrollBar {
+			skinClass: ClassReference("skins.animatorHerticalScrollBar");
+		}
+		
+	</fx:Style>
+	
+	<fx:Script>
+		<![CDATA[
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			
+			import com.adobe.serialization.json.JSON;
+			import com.seesmic.as3.xmpp.StreamEvent;
+			import com.seesmic.as3.xmpp.XMPP;
+			import com.seesmic.as3.xmpp.XMPPEvent;
+			import com.seesmic.as3.xmpp.xep.muc.MUC;
+			
+			import listeners.EnergyChosenEvent;
+			import listeners.LoginAcceptedEvent;
+			import listeners.SceneChangeEvent;
+			import listeners.ShowFullscreenEvent;
+			import listeners.TabbarLoadedEvent;
+			import listeners.TaskChangeEvent;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.UIDUtil;
+			
+			public static const _gapBetweenContainers:Number = 15;
+			
+			[Bindable] private var _completedTaskArray:Array;
+			[Bindable] private var _htmlLocation:String = "";
+			
+			protected static var groupColorDico:Dictionary;
+			protected static var groupIdDico:Dictionary;
+			
+			private var _chosenEnergyID:String = null;
+			private var _shouldExit:Boolean = false;
+			
+			private var _conn:XMPP = null;
+			private var _currentGroup:Object;
+			private var _unsavedEdit:Boolean = false;
+			
+			private var appUpdater:ApplicationUpdaterUI;
+			
+			
+			public static const ALERT_TEXT1:String = "En feil oppstod ved henting av spørsmålene fra serveren.";
+			public static const ALERT_TEXT2:String = "En feil oppstod ved henting av tweets fra serveren.";
+			public static const ALERT_TEXT3:String = "Kan ikke laste det forespurte dokumentet.";
+			public static const ALERT_TEXT4:String = "En feil oppstod ved henting av gruppenavnene fra serveren.";
+			public static const ALERT_TEXT5:String = "En feil oppstod ved henting av 'scenecontributions assets' fra serveren.";
+			public static const ALERT_TEXT6:String = "En feil oppstod ved henting av 'taskportfoliocomments' fra serveren.";
+			public static const ALERT_TEXT7:String = "Bildet ditt er nå kopiert. I Google Doc dokumentet, gå til 'Insert -> Image' -> By URL'. Bruk deretter 'cmd + v' for å lime inn URL.";
+			public static const ALERT_TEXT8:String = "En feil oppstod ved henting av energikildene fra serveren.";
+			public static const ALERT_TEXT9:String = "En feil oppstod ved henting av 'energies' fra serveren.";
+			public static const ALERT_TEXT10:String = "En feil oppstod ved henting av 'assets' fra serveren.";
+			public static const ALERT_TEXT11:String = "'Add/remove to portfolio service' er ikke tilgjengelig. Kontakt administrator.";
+			public static const ALERT_TEXT12:String = "Noe gikk galt når du lagrer elementet. Ta kontakt med administrator.";
+			public static const ALERT_TEXT13:String = "En feil oppstod da elementet skulle legges til i porteføljen.";
+			public static const ALERT_TEXT14:String = "En feil oppstod ved henting av artikkelens URL fra serveren.";
+			public static const ALERT_TEXT15:String = "En feil oppstod ved lagring av oppgaven 'comments' på serveren.";
+			public static const ALERT_TEXT16:String = "En feil oppstod ved lagring av 'simQuestion answer' på serveren.";
+			public static const ALERT_TEXT17:String = "Login-tjenesten er ikke tilgjengelig. Kontakt administrator.";
+			public static const ALERT_TEXT18:String = "Passordet er ikke gyldig.";
+			public static const ALERT_TEXT19:String = "Forbindelsen med meldingsserveren mislyktes. Applikasjonen vil ikke laste.";
+			public static const ALERT_TEXT20:String = "En feil oppstod ved henting av fullførte oppgaver fra serveren.";
+			public static const ALERT_TEXT21:String = "En feil oppstod ved henting av oppgaven fra serveren.";
+			public static const ALERT_TEXT22:String = "En feil oppstod ved henting av liste med ressurser fra serveren.";
+			public static const ALERT_TEXT23:String = "Tjeneste for validering av porteføljen er ikke tilgjengelig. Kontakt administrator.";
+			public static const ALERT_TEXT24:String = "Noe gikk galt ved godkjenning av oppgaven. Ta kontakt med administrator.";
+			public static const ALERT_TEXT25:String = "En feil oppstod ved validering av portefølje.";
+			public static const ALERT_TEXT26:String = "Det er ulagret tekst på siden, ønsker du likevel å endre scene?";
+			public static const ALERT_TEXT27:String = "Det er ulagret tekst på siden, ønsker du likevel å endre oppgave?";
+			public static const ALERT_TEXT28:String = "En feil oppstod ved henting av menyelementer fra serveren.";
+			
+			/**
+			 *
+			 * Called when application creation is complete
+			 * 
+			 **/
+			protected function initApp(event:FlexEvent):void {
+				//stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+				//this.maximize();
+				
+				/*appUpdater = new ApplicationUpdaterUI();
+				appUpdater.delay = 1;
+				appUpdater.updateURL = resourceManager.getString('resources', 'APP_UPDATE_URL');
+				appUpdater.isCheckForUpdateVisible = false;
+				appUpdater.isDownloadUpdateVisible = true;
+				appUpdater.isDownloadProgressVisible = true;
+				appUpdater.isInstallUpdateVisible = true;
+				appUpdater.addEventListener(ErrorEvent.ERROR, onError);
+				appUpdater.addEventListener(UpdateEvent.INITIALIZED, initFinished);
+				appUpdater.initialize();*/
+				
+				this.addEventListener(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), handleLoginAccepted);
+				this.addEventListener(resourceManager.getString('resources', 'SCENE_CHANGED'), handleSceneChange);
+				this.addEventListener(resourceManager.getString('resources', 'TASK_CHANGED'), handleTaskChange);
+				this.addEventListener(resourceManager.getString('resources', 'TABBAR_LOADED'), handleMenuLoaded);
+				this.addEventListener(resourceManager.getString('resources', 'REFRESH_COMPLETED_TASKS'), handleRefreshGroupsCompletedTasks);
+				this.addEventListener(resourceManager.getString('resources', 'SHOW_FULLSCREEN'), handleShowFullscreen);
+				this.addEventListener(resourceManager.getString('resources', 'ENERGY_CHOSEN'), handleEnergyChosen);
+				this.addEventListener(resourceManager.getString('resources', 'RESET_ENERGY'), handleResetEnergy);
+				this.addEventListener(resourceManager.getString('resources', 'UNSAVED_EDIT_TRUE'), handleUnsavedEditTrue);
+				this.addEventListener(resourceManager.getString('resources', 'UNSAVED_EDIT_FALSE'), handleUnsavedEditFalse);
+				this.addEventListener(Event.CLOSING, onApplicationQuit);
+			}
+			
+			/*private function onError(event:ErrorEvent):void {
+				Alert.show(event.toString());
+			}
+			
+			private function initFinished(evt:UpdateEvent):void {
+				appUpdater.checkNow();
+			}*/
+			
+			/**
+			 *
+			 * Custom dispatch to the correct work area
+			 * 
+			 **/
+			public function dispatchEventToWorkArea(event:Event):void {
+				if(_currentGroup.id == resourceManager.getString('resources', 'TEACHER_LOGIN_ID'))
+					teacherInterface.workareaContainer.dispatchEvent(event);
+				else
+					studentInterface.workareaContainer.dispatchEvent(event);
+			}
+			
+			/**
+			 *
+			 * Function to return the current selected group
+			 * 
+			 **/
+			public function get currentGroup():Object {
+				return _currentGroup;
+			}
+			
+			/**
+			 *
+			 * Function to return the current XMPP connection
+			 * 
+			 **/
+			public function get currentXMPPConnection():XMPP {
+				return _conn;
+			}
+			
+			/**
+			 *
+			 * Event handling method when login is OK
+			 * 
+			 **/
+			protected function handleLoginAccepted(evt:LoginAcceptedEvent):void {
+				//this needs to be assigned before we change the application's state
+				_currentGroup = evt.selectedGroup;
+				groupColorDico = evt.groupColorDico;
+				groupIdDico = evt.groupIdDico;
+/*				if(evt.selectedGroup.title == "Teacher")
+					this.fullScreenPresentation.workArea = teacherInterface.workareaContainer as WorkArea;
+				else
+					this.fullScreenPresentation.workArea = studentInterface.workareaContainer as WorkArea;
+*/				
+				//prepareXMPPConnection(new String(_currentGroup.title).toLowerCase());
+				dispatchEvent(new Event(resourceManager.getString('resources', 'REFRESH_COMPLETED_TASKS'), true));
+			}
+			
+			/**
+			 *
+			 * Function to instantiate a XMPP connection
+			 * 
+			 **/
+			/*protected function prepareXMPPConnection(grpName:String):void {
+				_conn = new XMPP();
+				_conn.auto_reconnect = true;
+				_conn.setJID(grpName+"@"+resourceManager.getString('resources', 'XMPP_SERVER')+"/"+UIDUtil.createUID());
+				_conn.setPassword(resourceManager.getString('resources', 'XMPP_CLIENT_DEFAULT_PASSWORD'));
+				_conn.setServer(resourceManager.getString('resources', 'XMPP_SERVER'));
+				_conn.addEventListener(XMPPEvent.SESSION, handleSession);
+				_conn.socket.addEventListener(StreamEvent.CONNECT_FAILED, handleConnectFailed);
+				_conn.addPlugin(new MUC());
+				_conn.connect();
+			}*/
+			
+			/**
+			 *
+			 * Event handling method for StreamEvent.CONNECT_FAILED
+			 * 
+			 **/
+			/*protected function handleConnectFailed(e:StreamEvent):void {
+				Alert.show(sciwork.ALERT_TEXT19, "XMPP Connection Error");
+				_conn.cancelReconnectionTimer();
+			}*/
+			
+			/**
+			 *
+			 * Event handling method for XMPP session
+			 * 
+			 **/
+			protected final function handleSession(e:XMPPEvent):void {
+				_conn.sendPresence();
+				dispatchEvent(new Event(resourceManager.getString('resources', 'REFRESH_COMPLETED_TASKS'), true));
+			}
+			
+			/**
+			 *
+			 * Method to (re)load completed tasks by this group
+			 * 
+			 **/
+			protected function handleRefreshGroupsCompletedTasks(evt:Event):void {
+				//getCompletedTasks.url =  resourceManager.getString('resources', 'SERVER_URL') + "/tasksCompleted/" + _currentGroup.id;
+				//getCompletedTasks.send();
+				
+				getCompletedTasks_resultHandler();
+			}
+			
+			/**
+			 *
+			 * Event handling method for scene change
+			 * 
+			 **/
+			protected function handleSceneChange(evt:SceneChangeEvent):void {
+				if(evt.eventOrigin == SceneChangeEvent.FOOTER) {
+					tabBar.sceneBar.selectedItem = evt.scene;
+					tabBar.selectFirstTask(evt.sceneIndex);
+				}
+				
+				if(this.currentState == "loggedIn") {
+					//update footer bar
+					footer.updateSelectedFooterScene(evt.scene);
+				}
+				
+				var currentInterface:String = getCurrentInterface();
+				this[currentInterface].changeScene();
+			}
+			
+			/**
+			 *
+			 * Event handling method for task change 
+			 * 
+			 **/
+			protected function handleTaskChange(evt:TaskChangeEvent):void {
+				var currentInterface:String = "studentInterface";
+				if(this.currentState == "loggedInTeacher") {
+					currentInterface = "teacherInterface";					
+				}
+				
+				this[currentInterface].changeTask(evt.task, currentGroup);
+			}
+			
+			/**
+			 *
+			 * Event handling method for login out
+			 * 
+			 **/
+			private function logout(event:MouseEvent):void {
+				this.fullScreenPresentation.visible = false;
+				this.fullScreenPresentation.includeInLayout = false;
+				//_conn.auto_reconnect = false;
+				var currentInterface:String = "studentInterface";
+				if(this.currentState == "loggedInTeacher") {
+					currentInterface = "teacherInterface";
+				}
+				
+				this[currentInterface].stopPlayingMedia();
+				this[currentInterface].resetNRJ();
+				
+				this.currentState = "loggedOff";
+				//_conn.disconnect();
+				//_conn = null;
+			}
+			
+			/**
+			 *
+			 * Event handling method for building the trajectory in the footer 
+			 * 
+			 **/
+			private function handleMenuLoaded(evt:TabbarLoadedEvent):void {
+				if(this.currentState == "loggedIn") {
+					footer.buildTrajectory(evt.menu, evt.menu[0], evt.menuItemWidth);
+				}
+			}
+			
+			/**
+			 * 
+			 * Error handling method for getCompletedTasks service
+			 * 
+			 **/
+			protected function getCompletedTasks_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT20, "Completed tasks service error");
+			}
+			
+			/**
+			 *
+			 * Result handling method for getCompletedTasks service 
+			 * 
+			 **/
+			protected function getCompletedTasks_resultHandler():void {
+				switch(_currentGroup.id) {
+					case "506c26ad42060774910aeba2":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab4893300480c12ec369c9","50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab488b300480c12ec369a8","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50ab46d2300480c12ec3695d","50c5c602b760a8ae9a3bcb37","50c6f85bb76016438b3087c1","50ab488f300480c12ec369b8","50ab4779300480c12ec36972","50ab4845300480c12ec3698b","50ab48ee300480c12ec369ee","50ab4629300480c12ec36945","50c6f80cb76016438b30878a"]'));
+						break;
+					}
+						
+					case "506c26ad42060774910aeba2":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab488b300480c12ec369a8","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50ab46d2300480c12ec3695d","50c5c602b760a8ae9a3bcb37","50c6f85bb76016438b3087c1","50ab4779300480c12ec36972","50ab488f300480c12ec369b8","50ab48ee300480c12ec369ee","50ab4629300480c12ec36945"]'));
+						break;
+					}
+						
+					case "506c21c742060774910aeb8b":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab3fa5300480c12ec3692f","50c5c602b760a8ae9a3bcb37","50ab3fd1300480c12ec36938","50ab4629300480c12ec36945","50ab3fb7300480c12ec36933"]'));
+						break;
+					}
+						
+					case "506c250342060774910aeb94":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50c5c602b760a8ae9a3bcb37","50c6f85bb76016438b3087c1","50ab4779300480c12ec36972","50ab488f300480c12ec369b8","50ab4845300480c12ec3698b","50ab48ee300480c12ec369ee","50ab4629300480c12ec36945","50c6f80cb76016438b30878a"]'));
+						break;
+					}
+						
+					case "506c225442060774910aeb90":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab4893300480c12ec369c9","50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab488b300480c12ec369a8","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50c5c602b760a8ae9a3bcb37","50ab46d2300480c12ec3695d","50c6f85bb76016438b3087c1","50ab4779300480c12ec36972","50ab4845300480c12ec3698b","50ab488f300480c12ec369b8","50ab4629300480c12ec36945"]'));
+						break;
+					}
+						
+					case "506c24ee42060774910aeb93":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab488b300480c12ec369a8","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50c5c602b760a8ae9a3bcb37","50c6f85bb76016438b3087c1","50ab4779300480c12ec36972","50ab488f300480c12ec369b8","50c6f83fb76016438b3087a5","50ab48ee300480c12ec369ee","50ab4629300480c12ec36945"]'));
+						break;
+					}
+						
+					case "506c24af42060774910aeb91":
+					{
+						//store the returned object as JSON 
+						_completedTaskArray = com.adobe.serialization.json.JSON.decode(new String('["50ab4893300480c12ec369c9","50ab3fa5300480c12ec3692f","50ab4724300480c12ec36967","50ab488b300480c12ec369a8","50ab3fd1300480c12ec36938","50ab4934300480c12ec36a17","50ab3fb7300480c12ec36933","50c6f7c0b76016438b308770","50b72f4b3004f156c7166e44","50c5c602b760a8ae9a3bcb37","50ab46d2300480c12ec3695d","50c6f85bb76016438b3087c1","50ab4779300480c12ec36972","50ab488f300480c12ec369b8","50ab48ee300480c12ec369ee","50ab4629300480c12ec36945"]'));
+						break;
+					}
+				}
+				
+				if(_currentGroup.id == resourceManager.getString('resources', 'TEACHER_LOGIN_ID')) {
+					this.currentState = "loggedInTeacher";
+					fullScreenPresentation.inTeacherState = true;
+				}
+				else {
+					this.currentState = "loggedIn";
+				}
+				
+				footer.updateCompletedTasks(this.currentState);
+					
+			}
+			
+			/**
+			 *
+			 * Static function to return color codes
+			 * 
+			 **/
+			public static function getColorBasedOnGroup(groupName:String):uint {
+				return groupColorDico[groupName];
+			}
+			
+			/**
+			 *
+			 * Static function to return group name based on id
+			 * 
+			 **/
+			public static function getGroupNameById(id:String):String {
+				return groupIdDico[id];
+			}
+			/**
+			 *
+			 * Static function to return group name based on id
+			 * 
+			 **/
+			public function getCurrentInterface():String {
+				var currentInterface:String = "studentInterface";
+				if(this.currentState == "loggedInTeacher") {
+					currentInterface = "teacherInterface";					
+				}
+				
+				return currentInterface;
+			}
+			/**
+			 *
+			 * Static function to return color codes
+			 * 
+			 **/
+//			public static function getIndexBasedOnGroup(groupName:String):Boolean {
+//				var finalPosition:int = 0;
+//				var i:int = 0;
+//				for (var k:Object in groupColorDico) {
+//					if(k as String == groupName) {
+//						finalPosition = i;
+//					}
+//					i++;
+//				}
+//				
+//				return getNumType(finalPosition);
+//			}
+			
+			/**
+			 * 
+			 * Function to return true if odd number and false oherwise
+			 * 
+			 **/
+			protected static function getNumType(numero:int):Boolean {
+				//check if the number is odd or even
+				if (numero % 2 == 0) {
+					return false;
+				}
+				else {
+					return true;
+				}
+			}
+			
+			/**
+			 *
+			 * Event handling method for hiding full screen
+			 * 
+			 **/
+			private function handleShowFullscreen(event:ShowFullscreenEvent):void {
+				if(event.shouldShow) {
+					this.mainScreen.includeInLayout = false;
+					this.mainScreen.visible = false;
+					fullScreenPresentation.handleShowFullscreen(event, (tabBar.sceneBar.selectedItem as Object), (tabBar.taskBar.selectedItem as Object), _conn, currentGroup.id);
+				}
+				else {
+					this.mainScreen.includeInLayout = true;
+					this.mainScreen.visible = true;
+					fullScreenPresentation.handeHideFullScreen(event);
+				}
+			}
+			
+			/**
+			 *
+			 * Event handling method to display tweets fullscreen 
+			 * 
+			 **/
+			/*
+			protected function handleShowTweetsFullscreen(evt:ShowTweetsFullscreenEvent):void {
+				if(evt.shouldShow || presentationGroup.visible) {
+					presentationGroup.visible = true;
+					
+					//refresh the view
+					presentationGroupArea.removeAllElements();
+					
+					//build the correct arrays
+					var tweet:Tweet;
+					var tweetObject:Object;
+					for each (var twt:Object in evt.tweetsInView) {
+						tweet = new Tweet();
+						tweet.data = twt;
+						tweet.conn = _conn;
+						
+						//need to see if tweet is visisble
+						if(twt.isVisible) {
+							//place the tweets in the view
+							presentationGroupArea.addElement(tweet);
+						}
+					}
+				}
+			}
+			*/
+			/**
+			 *
+			 * Event handling method to handle application exiting
+			 * 
+			 **/
+			protected function onApplicationQuit(event:Event):void {
+				if(_chosenEnergyID != null) {
+					//stop the event here
+					event.preventDefault();
+					
+					//toggle boolean to indicate that there will be exit afterwards
+					_shouldExit = true;
+					
+					//remove exit event listener, so that this method won't be called again
+					this.removeEventListener(Event.CLOSING, onApplicationQuit);
+					
+					//dispatch for reset energy call
+					dispatchEvent(new Event(resourceManager.getString('resources', 'RESET_ENERGY'), true));
+				}
+			}
+			
+			/**
+			 *
+			 * Event handling method to display tweets fullscreen 
+			 * 
+			 **/
+			protected function handleResetEnergy(evt:Event):void {
+				/*if(_chosenEnergyID != null) {
+					var upurlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/energySources");
+					upurlRequest.method = URLRequestMethod.PUT;
+					upurlRequest.contentType = "application/json";
+					
+					var statusObject:Object = new Object();
+					statusObject.stat = "reset";
+					statusObject.id = _chosenEnergyID;
+					statusObject.token = "";
+					
+					upurlRequest.data = com.adobe.serialization.json.JSON.encode(statusObject);
+					var uploader:URLLoader = new URLLoader();
+					uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, handleEnergyResetComplete);
+					uploader.load(upurlRequest);
+				}*/
+			}
+			
+			/**
+			 *
+			 * Event handling method to store the currently chosen energy id
+			 * 
+			 **/
+			protected function handleEnergyChosen(evt:EnergyChosenEvent):void {
+				_chosenEnergyID = evt.energyId;
+			}
+			
+			/**
+			 *
+			 * Event handling method when the reset energy call is completed 
+			 * 
+			 **/
+			protected function handleEnergyResetComplete(evt:HTTPStatusEvent):void {
+				if(_shouldExit) {
+					this.exit();
+				}
+			}
+			
+			/**
+			 * 
+			 * Event handling method for LOAD_WEBPAGE
+			 * 
+			 **/
+			/*
+			protected function handleLoadWebpagelRequest(evt:ShowWebPage):void {
+				htmlPresentationGroup.visible = true;
+				URLRequestDefaults.userAgent = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_4; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8";
+				_htmlLocation = evt.url;
+				htmlBI.visible = true;
+			}
+			*/
+			/**
+			 * 
+			 * Function to hide the busyindicator after html page has loaded
+			 * 
+			 **/
+			/*
+			protected function htmlLoded(event:Event):void {
+				htmlBI.visible = false;
+			}
+			*/
+			
+			/**
+			 *
+			 * Method to return to 'clean' groupname (replace norwegian charac) 
+			 * 
+			 **/
+			public static function cleanGroupName(name:String):String {
+				return name.replace("Å","A").replace("Ø", "O").replace("Æ", "AE");
+			}
+
+			public function get unsavedEdit():Boolean
+			{
+				return _unsavedEdit;
+			}
+
+			public function set unsavedEdit(value:Boolean):void
+			{
+				_unsavedEdit = value;
+			}
+			
+			protected function handleUnsavedEditTrue(evt:Event):void {
+				unsavedEdit = true;
+			}
+			
+			protected function handleUnsavedEditFalse(evt:Event):void {
+				unsavedEdit = false;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- s:HTTPService method="GET" result="getCompletedTasks_resultHandler(event)" fault="getCompletedTasks_faultHandler(event)" resultFormat="text" id="getCompletedTasks" / -->
+		<s:Scale id="atScale" target="{fullScreenPresentation}" scaleXFrom="0.1" scaleXTo="1" scaleYFrom="0.1" scaleYTo="1" />
+	</fx:Declarations>
+	
+	<s:states>
+		<s:State name="loggedOff" />
+		<s:State name="loggedIn" />
+		<s:State name="loggedInTeacher" />
+	</s:states>
+	
+	<s:Button label="LOGG UT" fontSize="11" click="logout(event)" right="20" top="0" skinClass="skins.logoutButton" excludeFrom="loggedOff" itemDestructionPolicy="auto" buttonMode="true">
+		<s:filters>
+			<s:DropShadowFilter 
+			distance="3" alpha=".3" blurX="7" blurY="7"
+			angle="90" />
+		</s:filters>
+	</s:Button>
+
+	<!-- Logging component -->
+	<local:GroupLogger id="groupLogger" horizontalCenter="0" verticalCenter="0" includeIn="loggedOff" itemDestructionPolicy="auto" />
+	
+	<s:VGroup width="1000" height="100%" horizontalCenter="0" y="30">
+		<!-- Header banner component -->
+		<local:Header excludeFrom="loggedOff" itemDestructionPolicy="auto" />
+		<s:Spacer height="3" />
+		
+		<components:FullScreenPresentation id="fullScreenPresentation" width="100%" height="560" visible="false" backgroundColor="#FFFFFF" includeInLayout="false" horizontalCenter="0" excludeFrom="loggedOff" />
+		<s:BorderContainer id="mainScreen" width="100%" height="600" borderColor="#eeeeee" cornerRadius="4" borderAlpha=".3" excludeFrom="loggedOff">
+			<s:filters>
+				<s:DropShadowFilter 
+					distance="3" alpha=".3" blurX="7" blurY="7"
+					angle="90" />
+			</s:filters>
+			
+			<s:VGroup width="100%" height="100%">
+				<!-- Tabbar component -->
+				<local:Tabbar id="tabBar" width="100%" excludeFrom="loggedOff" itemDestructionPolicy="auto"/>
+				
+				<s:Group width="100%" height="100%">
+					<!-- Student space -->
+					<local:StudentInterface id="studentInterface" includeIn="loggedIn" top="{_gapBetweenContainers}" right="{_gapBetweenContainers}" bottom="{_gapBetweenContainers}" left="{_gapBetweenContainers}" itemDestructionPolicy="auto"></local:StudentInterface>
+				
+					<!-- Teacher space -->
+					<local:TeacherInterface id="teacherInterface" includeIn="loggedInTeacher" top="{_gapBetweenContainers}" right="{_gapBetweenContainers}" bottom="{_gapBetweenContainers}" left="{_gapBetweenContainers}" itemDestructionPolicy="auto"></local:TeacherInterface>
+				</s:Group>
+			</s:VGroup>
+		</s:BorderContainer>
+	</s:VGroup>
+	
+	<!-- Footer navigation component -->
+	<local:Footer id="footer" width="100%" bottom="0" includeIn="loggedIn,loggedInTeacher" completedTasks="{_completedTaskArray}" />
+	
+	<!--s:BorderContainer id="presentationGroup" width="100%" height="100%" visible="false" backgroundColor="#FFFFFF">
+		<s:Group width="100%" height="100%" id="presentationGroupArea" />
+		<s:Button label="X" click="handeTweetFullScreenClose(event)" />
+	</s:BorderContainer>
+	
+	<s:BorderContainer id="htmlPresentationGroup" width="100%" height="100%" visible="false" backgroundColor="#FFFFFF">
+		<mx:HTML id="htmlLoader" width="100%" height="100%" location="{_htmlLocation}" complete="htmlLoded(event)" />
+		<s:Button label="X" click="_htmlLocation='';htmlPresentationGroup.visible=false" />
+		<s:BusyIndicator verticalCenter="0" horizontalCenter="0" id="htmlBI" />
+	</s:BorderContainer-->
+</s:WindowedApplication>

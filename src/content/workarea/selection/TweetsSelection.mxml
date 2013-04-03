@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:components="components.*" gap="0" xmlns:selection="content.workarea.selection.*" creationComplete="initGroup(event)">
+	
+	<fx:Declarations>
+		<s:ArrayCollection id="tweetFeedArray" />
+		<s:HTTPService method="GET" result="getAssets_resultHandler(event)" fault="getAssets_faultHandler(event)" resultFormat="text" id="getAssetsPortfolio" showBusyCursor="true" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import content.workarea.WorkArea;
+			import content.workarea.materials.MaterialsItem;
+			
+			import listeners.TweetSelectionBarEvent;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			public static const SELECTION_STATE:String = "selection";
+			public static const LIVEFEED_STATE:String = "livefeed";
+			
+			private var _teacherMode:Boolean = false;
+			
+			protected function initGroup(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'TWEET_SELECTION_CHANGE'), tweetSelectionChangeHandler);
+				
+			}
+			
+			public function retrieveAssets(groupId:String, taskId:String):void {
+				getAssetsPortfolio.url = resourceManager.getString('resources', 'SERVER_URL') + "/contributions/" + groupId + "/" + taskId;
+				getAssetsPortfolio.send();
+			}
+			
+			protected function tweetSelectionChangeHandler(evt:TweetSelectionBarEvent):void {
+				this.currentState = evt.newState;
+			}
+			
+			/**
+			 * 
+			 * Error handling method for getAssets service
+			 * 
+			 **/
+			protected function getAssets_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT10, "Assets service error");
+			}
+			
+			public function refreshFeed():void {
+				liveFeedComponent.refreshLiveFeed();
+			}
+			
+			/**
+			 *
+			 * Result handling method for getAssets service 
+			 * 
+			 **/
+			protected function getAssets_resultHandler(event:ResultEvent):void {
+				//store the returned object as JSON 
+				var contributions:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				
+				//clean current material holders
+				//portfolioGroup.removeAllElements();
+				
+				parseMaterialSubArray(contributions.simages, WorkArea.IMAGE_TYPE);
+			}
+			
+			/**
+			 *
+			 * Parsing method to assign retrieved material to a correct preview item
+			 * 
+			 **/
+			protected function parseMaterialSubArray(subArray:Array, materialType:String):void {
+				var newItem:MaterialsItem;
+				
+				//extract materials
+				for each (var material:Object in subArray) {
+					newItem = new MaterialsItem();
+					newItem.isPortfolio = material.isPortfolio;
+					newItem.xpos = material.xpos;
+					newItem.ypos = material.ypos;
+					newItem.deleter.visible = false;
+					newItem.sourceType = "TWEETS";
+					
+					//add it to the portfolio
+					//portfolioGroup.addElement(newItem);
+					
+					//assign id
+					newItem.id = material.id;
+					
+					//pick correct preview type
+					newItem.setupPreview(WorkArea.IMAGE_TYPE, resourceManager.getString('resources', 'SERVER_URL')+material.filePath, resourceManager.getString('resources', 'SERVER_URL')+material.filePath);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:SelectionHeader id="selectionheader" width="100%" height="23" currentState="tweets"/>
+	<s:BorderContainer width="100%" height="100%" borderAlpha=".3" borderWeight="2">
+		<!--s:Scroller top="5" right="5" bottom="5" left="5" skinClass="skins.animatorVScroller" >
+			<s:VGroup id="portfolioGroup" width="100%" height="100%" />
+		</s:Scroller-->
+		<selection:LiveFeedComponent id="liveFeedComponent" width="100%" height="100%" tweetFeedArray="{tweetFeedArray}" />
+	</s:BorderContainer>
+	
+</s:VGroup>

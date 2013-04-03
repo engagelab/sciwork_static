@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" contentBackgroundColor="#EEEEEE" borderAlpha="0" borderWeight="0" xmlns:components="components.*">
+	
+	<fx:Declarations>
+		<fx:String id="groupId" />
+		<fx:String id="taskId" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.jonas.net.Multipart;
+			import com.pfp.events.JPEGAsyncCompleteEvent;
+			import com.seesmic.as3.xmpp.XMPP;
+			
+			import components.Tweet;
+			
+			import mx.controls.Alert;
+			import mx.controls.ProgressBar;
+			import mx.events.FlexEvent;
+			import mx.utils.UIDUtil;
+			
+			
+			private var _tweetsForGroup:Array;
+			private var _conn:XMPP;
+			private var _energyID:String;
+			
+			private var groupReady:Boolean = false;
+			
+			public function get conn():XMPP
+			{
+				return _conn;
+			}
+
+			public function get tweetsForGroup():Array
+			{
+				return _tweetsForGroup;
+			}
+			
+			/**
+			 * 
+			 * function to display all tweets
+			 * 
+			 **/
+			public function populateTweets(tweetsForGroup:Array, groupId:String, taskId:String, conn:XMPP, energyId:String):void {
+				this._tweetsForGroup = tweetsForGroup;
+				this._conn = conn;
+				this.groupId = groupId;
+				this.taskId = taskId;
+				this._energyID = energyId;
+				
+				refreshTweetsDisplay();
+			}
+			
+			/**
+			 * 
+			 * function to add all tweets to their container
+			 * 
+			 **/
+			private function refreshTweetsDisplay():void {
+				if(groupReady) {
+					
+					//refresh the view
+					tweetsContainer.removeAllElements();
+					
+					//build the correct arrays
+					var tweet:Tweet;
+					var tweetObject:Object;
+					for each (var twt:Object in tweetsForGroup) {
+						tweet = new Tweet();
+						tweet.data = twt;
+						tweet.conn = conn;
+						
+						//need to see if tweet is visisble
+						if(twt.isVisible) {
+							//place the tweets in the view
+							tweetsContainer.addElement(tweet);
+						}
+					}
+				}
+			}
+			
+			/**
+			 * 
+			 * function called when group container for tweets is ready. Needed in order to create tweets based on parent' size.
+			 * 
+			 **/
+			protected function groupComplete(event:FlexEvent):void {
+				groupReady = true;
+				refreshTweetsDisplay();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="default" />
+		<s:State name="encoding" />
+	</s:states>
+	
+	<!--s:Button top="0" right="0" label="Save" click="saveTweetAreaPicture(event)" /-->
+	<s:Group width="100%" height="100%" id="tweetsContainer" creationComplete="groupComplete(event)" />
+	
+	<s:SkinnableContainer width="100%" height="100%" backgroundAlpha=".8" backgroundColor="#333333" includeIn="encoding">
+		<mx:ProgressBar id="pbar" horizontalCenter="0" verticalCenter="0" mode="manual" color="#ffffff"/>
+	</s:SkinnableContainer>
+</s:BorderContainer>

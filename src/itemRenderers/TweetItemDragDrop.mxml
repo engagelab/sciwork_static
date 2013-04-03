@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="false" width="100%" minHeight="30">
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import components.Tweet;
+			
+			import listeners.RetweetEvent;
+			
+			import mx.core.FlexGlobals;
+			import mx.effects.Tween;
+			import mx.events.FlexEvent;
+			
+			[Bindable] private var groupColor:uint = 0xCCCCCC;
+			[Bindable] private var callOut:Boolean = true;
+			
+			/**
+			 * 
+			 * function to enable or not retweet and gives correct background color to the whole element
+			 * 
+			 * 
+			 **/
+			protected function initRenderer():void {
+				var groupName:String = new String(data.from).toLowerCase();
+				groupColor = sciwork.getColorBasedOnGroup(sciwork.cleanGroupName(groupName.toUpperCase()).toLowerCase());
+				//callOut = sciwork.getIndexBasedOnGroup(sciwork.cleanGroupName(groupName.toUpperCase()).toLowerCase());
+				
+				if(mx.core.FlexGlobals.topLevelApplication.currentState == "loggedInTeacher") {
+						this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDown);
+				}
+				/*var group:Object = mx.core.FlexGlobals.topLevelApplication.currentGroup;
+				var cm:ContextMenu = new ContextMenu();
+				cm.hideBuiltInItems();
+				var retweetMI:ContextMenuItem = new ContextMenuItem("");
+				retweetMI.label = "Re-tweet";
+				retweetMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, retweetHandler);
+				cm.customItems.push(retweetMI);
+				this.contextMenu = cm;*/
+			}
+			private function mouseDown(evt:MouseEvent):void {
+				// Create a new Tweet class to be dragged, then added to the screen
+				data.text = this.extractText(data.bdy);
+				var twt:Tweet = new Tweet();
+				twt.teacherDrag(true);
+				twt.teacherMode = true;
+				twt.data = this.data;
+				twt.conn = mx.core.FlexGlobals.topLevelApplication.currentXMPPConnection;
+				
+				// Move event control to the tweet and determine it's position in the full screen component
+				evt.stopPropagation();
+				var p:Point = new Point(evt.stageX, evt.stageY);
+				p = mx.core.FlexGlobals.topLevelApplication.fullScreenPresentation.globalToLocal(p);
+				var newEvent:MouseEvent = new MouseEvent(evt.type, evt.bubbles, evt.cancelable, p.x, p.y);
+				twt.x = p.x - 20;
+				twt.y = p.y - 20;
+				mx.core.FlexGlobals.topLevelApplication.fullScreenPresentation.addElement(twt);
+				twt.dispatchEvent(newEvent);
+				this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDown);
+				this.alpha = 0.5;
+			}
+			/**
+			 *
+			 * Called when addToPortfolioMI item is clicked
+			 * 
+			 **/
+			protected function retweetHandler(event:ContextMenuEvent):void {
+				var rte:RetweetEvent = new RetweetEvent(resourceManager.getString('resources', 'RE_TWEET'), true);
+				rte.originGroup = data.from;
+				rte.tweetContent = bdy.text;
+				dispatchEvent(rte);
+			}
+			
+			
+			/**
+			 *
+			 * Function to extract the text from the JSON body
+			 * 
+			 **/
+			protected function extractText(bdy:String):String {
+				var txt:String = "";
+				
+				try {
+					var res:Object = com.adobe.serialization.json.JSON.decode(bdy);
+					txt = new String(res.text);
+				}
+				catch(error:Error) {
+				}
+				
+				initRenderer();
+				
+				return txt;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:filters>
+		<s:DropShadowFilter 
+			distance="3" alpha=".6" blurX="4" blurY="4"
+			angle="90" />
+	</s:filters>
+	
+	<s:Rect left="5" right="5" top="5" bottom="10" radiusX="3" radiusY="3">
+		<s:fill>
+			<s:SolidColor id="itemBackground" alpha="{data.al}" color="{groupColor}" />
+		</s:fill>
+	</s:Rect>
+	
+	<!-- not needed anymore
+	<s:Path bottom="0" left="20" data="M 0 0 L 0 10 L 10 0 L 0 0" visible="{!callOut}">
+		<s:fill>
+			<s:SolidColor color="{groupColor}" alpha="{data.al}"/>
+		</s:fill>
+	</s:Path>
+	<s:Path bottom="0" right="25" data="M 0 0 L 10 10 L 10 0 L 0 0" visible="{callOut}">
+		<s:fill>
+			<s:SolidColor color="{groupColor}" alpha="{data.al}"/>
+		</s:fill>
+	</s:Path>
+	-->
+	
+	
+	<s:VGroup top="10" right="10" bottom="20" left="10" >
+		<!--s:Label text="{data.from+':'}" width="100%" color="#FFFFFF" /-->
+		<s:Label id="bdy" text="{extractText(data.bdy)}" width="100%" height="100%" color="#FFFFFF" />
+	</s:VGroup>
+</s:ItemRenderer>

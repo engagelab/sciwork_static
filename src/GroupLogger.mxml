@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="initGroup(event)" >
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import listeners.LoginAcceptedEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] private var _groupList:ArrayCollection;
+			
+			private var groupColorDico:Dictionary;
+			private var groupIdDico:Dictionary;
+			
+			/**
+			 *
+			 * Error handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT4, "Group service error");
+			}
+			
+			/**
+			 *
+			 * Result handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_resultHandler():void {
+				//store the returned object as JSON 
+				var res:Object = com.adobe.serialization.json.JSON.decode(new String('[{"colour":"0x000000","id":"506c21c742060774910aeb8b","name":"LÆRER"},{"colour":"0x4ACBED","id":"506c250342060774910aeb94","name":"BLÅ"},{"colour":"0xFF3388","id":"506c24af42060774910aeb91","name":"ROSA"},{"colour":"0x811E78","id":"506c24cf42060774910aeb92","name":"LILLA"},{"colour":"0x6A6D6E","id":"506c225442060774910aeb90","name":"GRÅ"},{"colour":"0x89BD46","id":"506c24ee42060774910aeb93","name":"GRØNN"},{"colour":"0xFF9736","id":"506c26ad42060774910aeba2","name":"ORANSJE"}]'));
+				
+				//instantiate and build group array
+				_groupList = new ArrayCollection();
+				groupColorDico = new Dictionary();
+				groupIdDico = new Dictionary();
+				for each (var act:Object in res) {
+					_groupList.addItem({title: act.name, id: act.id, colour: act.colour});
+					groupColorDico[sciwork.cleanGroupName((act.name as String).toUpperCase()).toLowerCase()] = act.colour;
+					groupIdDico[act.id] = sciwork.cleanGroupName((act.name as String).toUpperCase()).toLowerCase()
+				}
+				
+				//ordering the list alphabetically
+				var sortfield:SortField = new SortField();
+				sortfield.name = "title";
+				sortfield.descending = false;
+				
+				var sort:Sort = new Sort();
+				sort.fields = [sortfield];
+				
+				_groupList.sort = sort;
+				_groupList.refresh();
+			}
+			
+			/**
+			 *
+			 * Handles click on LOG IN button 
+			 * 
+			 **/
+			protected function validateBeforeLoggingIn():void {
+				//validate the combo
+				/*var groupValidation:ValidationResultEvent = groupValidator.validate();
+				var passValidation:ValidationResultEvent = passwordValidator.validate();
+				
+				if (groupValidation.type == ValidationResultEvent.VALID && passValidation.type == ValidationResultEvent.VALID) {
+					submitForm();
+				}*/
+			}
+			
+			/**
+			 *
+			 * Called if the passwordValidator is valid
+			 * 
+			 **/
+			protected function submitForm():void {
+				var params:Object = new Object();
+				params.groupId = (groupCombo.selectedItem as Object).id;
+				//params.password = groupPass.text;
+				
+				var urlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL')+'/connect');
+				urlRequest.method = URLRequestMethod.POST;
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				var loginService:URLLoader = new URLLoader();
+				loginService.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+				loginService.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				loginService.load(urlRequest);
+			}
+			
+			/**
+			 *
+			 * Handles response from the loginService 
+			 * 
+			 **/
+			protected function httpStatusHandler(ev:HTTPStatusEvent):void {
+				
+				//analyse returned status code
+				switch(ev.status) {
+					case 0:
+						//service not available
+						Alert.show(sciwork.ALERT_TEXT17, "Login service error");
+						break;
+					case 200:
+						//login OK, password accepted
+						this.removeEventListener(KeyboardEvent.KEY_DOWN, checkKey);
+						
+						var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
+						lae.selectedGroup = groupCombo.selectedItem as Object;
+						lae.selectedGroup.title = sciwork.cleanGroupName(lae.selectedGroup.title);
+						lae.groupColorDico = groupColorDico;
+						lae.groupIdDico = groupIdDico;
+						dispatchEvent(lae);
+						break;
+					case 401:
+						//login not OK, wrong password
+						Alert.show(sciwork.ALERT_TEXT18, "Login service error");
+						//groupPass.text = "";
+						break;
+				}
+			}
+			
+			/**
+			 *
+			 * Handles ioError from the loginService 
+			 * 
+			 **/
+			private function ioErrorHandler(ev:IOErrorEvent):void {
+				trace(ev.errorID);
+			}
+			
+			/**
+			 *
+			 * Init function for this component 
+			 * 
+			 **/
+			protected function initGroup(event:FlexEvent):void {
+				this.addEventListener(KeyboardEvent.KEY_DOWN, checkKey);
+				//getAllGroups.send();
+				getAllGroups_resultHandler();
+			}
+			
+			/**
+			 * 
+			 * Function to handle keyboard events
+			 *  
+			 **/
+			protected function checkKey(event:KeyboardEvent):void {
+				if(event.charCode == 13) {
+					validateBeforeLoggingIn();
+				}
+			}
+			
+			protected function groupCombo_changeHandler(event:IndexChangeEvent):void {
+				if(event.newIndex > -1) {
+					var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
+					lae.selectedGroup = groupCombo.selectedItem as Object;
+					lae.selectedGroup.title = sciwork.cleanGroupName(lae.selectedGroup.title);
+					lae.groupColorDico = groupColorDico;
+					lae.groupIdDico = groupIdDico;
+					dispatchEvent(lae);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- retrieve list of group names -->
+		<!-- s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/groupInfo'}" 
+					   method="GET" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" 
+					   resultFormat="text" id="getAllGroups" /-->
+
+		<!-- validators for login -->
+		<!-- s:NumberValidator id="groupValidator" source="{groupCombo}" property="selectedIndex" minValue="0" lessThanMinError="Choose a group from the list" />
+		<mx:StringValidator id="passwordValidator" source="{groupPass}" property="text" minLength="1" tooShortError="Provide a password" /-->
+	</fx:Declarations>
+	
+	<s:Group horizontalCenter="0" verticalCenter="0">
+		<s:Image source="@Embed('assets/loginbck.jpg')" cacheAsBitmap="true" />
+		<s:Group horizontalCenter="0" y="70">
+			<s:Image source="@Embed('assets/loginlogo.png')" cacheAsBitmap="true" smooth="true" smoothingQuality="high" horizontalCenter="0"/>
+			<s:DropDownList fontSize="11" cornerRadius="3" y="70" id="groupCombo" dataProvider="{_groupList}" labelField="title" prompt="Velg gruppe" width="200" itemRenderer="itemRenderers.LoginItemRenderer" horizontalCenter="0" change="groupCombo_changeHandler(event)" />
+			<!-- s:TextInput y="110" id="groupPass" text="" displayAsPassword="true" width="100%" horizontalCenter="0" skinClass="skins.LoginInput"/>
+			<s:Button fontSize="11" y="145" width="60" height="23" cornerRadius="3" label="LOGIN" click="validateBeforeLoggingIn()" right="0" chromeColor="#4668B0" color="#FFFFFF"/ -->
+		</s:Group>
+	</s:Group>
+</s:Group>

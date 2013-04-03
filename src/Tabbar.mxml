@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="getMenu_resultHandler()">
+	
+	<fx:Declarations>
+		<!-- retrieve list of menu items -->
+		<!-- s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/menu'}" method="GET" result="getMenu_resultHandler(event)" fault="getMenu_faultHandler(event)" resultFormat="text" id="getMenu" /-->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import listeners.SceneChangeEvent;
+			import listeners.TabbarLoadedEvent;
+			import listeners.TaskChangeEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.Button;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] private var tabs:ArrayCollection;
+			[Bindable] private var tasks:ArrayCollection;
+			[Bindable] private var dividerColor:uint = 0xFFFFFF;
+			
+			private var lastSceneIndex:Number = 0;
+			private var newSceneIndex:Number = 0;
+			
+			private var lastTaskIndex:Number = 0;
+			private var newTaskIndex:Number = 0;
+			
+			/**
+			 * 
+			 * Handle scene change 
+			 * 
+			 **/
+			protected function sceneBar_changeHandler(event:IndexChangeEvent):void {
+				newSceneIndex = event.newIndex;
+				
+				if(mx.core.FlexGlobals.topLevelApplication.unsavedEdit as Boolean) {
+					Alert.show(sciwork.ALERT_TEXT26, "Unsaved Text", Alert.YES | Alert.NO, null, editAlertSceneHandler, null, Alert.YES);
+				}
+				else {
+					proceedChangeScene(newSceneIndex);
+				}
+			}
+			
+			private function editAlertSceneHandler(evt:CloseEvent):void {
+				if(evt.detail == Alert.YES) {
+					proceedChangeScene(newSceneIndex);
+					dispatchEvent(new Event(resourceManager.getString('resources', 'UNSAVED_EDIT_FALSE'), true));
+				}
+				else {
+					sceneBar.selectedIndex = lastSceneIndex;
+				}
+			}
+			
+			private function proceedChangeScene(ind:Number):void {
+				var sce:SceneChangeEvent = new SceneChangeEvent(resourceManager.getString('resources', 'SCENE_CHANGED'), true);
+				sce.scene = sceneBar.selectedItem as Object;
+				sce.eventOrigin = SceneChangeEvent.MENU;
+				dispatchEvent(sce);
+				
+				lastSceneIndex = ind;
+				
+				selectFirstTask(ind);
+			}
+			
+					
+			/**
+			 * 
+			 * Handle task change 
+			 * 
+			 **/
+			protected function taskBar_changeHandler(event:IndexChangeEvent):void {
+				newTaskIndex = event.newIndex;
+				
+				if(mx.core.FlexGlobals.topLevelApplication.unsavedEdit as Boolean) {
+					Alert.show(sciwork.ALERT_TEXT27, "Unsaved Text", Alert.YES | Alert.NO, null, editAlertTaskHandler, null, Alert.YES);
+				}
+				else {
+					proceedChangeTask(newTaskIndex);
+				}
+				
+				
+			}
+			
+			private function editAlertTaskHandler(evt:CloseEvent):void {
+				if(evt.detail == Alert.YES) {
+					proceedChangeTask(newTaskIndex);
+					dispatchEvent(new Event(resourceManager.getString('resources', 'UNSAVED_EDIT_FALSE'), true));
+				}
+				else {
+					taskBar.selectedIndex = lastTaskIndex;
+				}
+			}
+			
+			private function proceedChangeTask(ind:Number):void {
+				var tce:TaskChangeEvent = new TaskChangeEvent(resourceManager.getString('resources', 'TASK_CHANGED'), true);
+				tce.task = taskBar.selectedItem as Object;
+				dispatchEvent(tce);
+				
+				lastTaskIndex = ind;
+			}
+			
+			
+			/**
+			 * 
+			 * Error handling method for getMenu service
+			 * 
+			 **/
+			protected function getMenu_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT28, "Menu service error");
+			}
+			
+			/**
+			 *
+			 * Result handling method for getMenu service 
+			 * 
+			 **/
+			protected function getMenu_resultHandler():void {
+				//store the returned object as JSON 
+				var res:Object = com.adobe.serialization.json.JSON.decode(new String('[  {    "stasks" : [      {        "taskType" : "questions",        "id" : "50ab3fa5300480c12ec3692f",        "title" : "SPØRSMÅL 1",        "portFolioSceneId" : null,        "description" : "Hva er energi?<br /><br />Bruk iPoden til å besvare oppgaven.",        "icon" : "1-1.png"      },      {        "taskType" : "questions",        "id" : "50ab3fb7300480c12ec36933",        "title" : "SPØRSMÅL 2",        "portFolioSceneId" : null,        "description" : "Hvordan henger energi sammen med fenomener du observer rundt deg?<br /><br />Bruk iPoden til å besvare oppgaven.",        "icon" : "1-1.png"      },      {        "taskType" : "questions",        "id" : "50ab3fd1300480c12ec36938",        "title" : "SPØRSMÅL 3",        "portFolioSceneId" : null,        "description" : "Hvordan kan energi skifte form?<br /><br />Bruk iPoden til å besvare oppgaven.",        "icon" : "1-1.png"      }    ],    "id" : "50ab3f4b300480c12ec3692c",    "title" : "Introduksjon",    "icon" : "1.png"  },  {    "stasks" : [      {        "taskType" : "tweets",        "id" : "50ab4629300480c12ec36945",        "title" : "TWEET",        "portFolioSceneId" : null,        "description" : "Undersøk energikilden dere har ansvaret for.<br /><br />Svar på så mange av disse spørsmålene som dere klarer, og finn gjerne andre fakta om energikilden også. <ul><li>Hvordan produseres energien?</li><li>Hvordan omformes og bæres energien?</li><li>Hvordan blir energien utnyttet?</li><li>Hva er den mest egnet til?</li><li>Hvor viktig er den?</li><li>Hvor mye har vi av denne energiressursen i Norge?</li></ul><br /><br />Bruk læreboka og søk på nettet. Bruk iPoden til å skrive tweets. Husk å merke disse med # og så kilden før dere skriver faktaene.",        "icon" : "2-1.png"      }    ],    "id" : "50ab453c300480c12ec3693e",    "title" : "Fornybar Energi",    "icon" : "2.png"  },  {    "stasks" : [      {        "taskType" : "assets",        "id" : "50ab46d2300480c12ec3695d",        "title" : "SPRAYBOKS",        "portFolioSceneId" : null,        "description" : "1. Trykk på ventilen.<br /><br />2. Beskriv hva dere opplever og kjenner.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sprayboks på andre måter om dere har en hypotese eller en idé dere vil teste ut.",        "icon" : "3-1.png"      },      {        "taskType" : "assets",        "id" : "50ab4724300480c12ec36967",        "title" : "SYKKELPUMPE",        "portFolioSceneId" : null,        "description" : "1. Press fingeren hardt mot ventilen og pump kraftig flere ganger.<br /><br />2. Beskriv hva dere gjør, opplever og kjenner.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sykkelpumpen på andre måter om dere har en hypotese eller en idé dere vil teste ut.",        "icon" : "3-2.png"      },      {        "taskType" : "assets",        "id" : "50ab4779300480c12ec36972",        "title" : "SPRØYTE",        "portFolioSceneId" : null,        "description" : "1. Fyll opp sprøyta med varmt vann til den er omtrent halvfull. Ta ut luften som er mellom vannet og åpningen. Hold fingeren hardt foran åpningen og dra (ikke skyv).<br /><br />2. Beskriv hva dere ser.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sprøyten på andre måter om dere har en hypotese eller en idé dere vil teste ut.",        "icon" : "3-3.png"      }    ],    "id" : "50ab4672300480c12ec36954",    "title" : "Eksperimenter",    "icon" : "3.png"  },  {    "stasks" : [      {        "taskType" : "assets",        "id" : "50ab4845300480c12ec3698b",        "title" : "VARMEPUMPESPILL",        "portFolioSceneId" : null,        "description" : "Prøv varmepumpespillet. Beskriv hva dere ser og føler. <br /><br />Ta en kort video, og noen bilder, der dere forsøker å forklare hvorfor huset blir varmere og kaldere til tross for temperaturendringene ute. Bruk gjerne iPoden til å ta flere videoer av samme forsøk, men merk ut den dere sender til bruk i en plenumspresentasjon.",        "icon" : "4-1.png"      },      {        "taskType" : "tweets",        "id" : "50c5c602b760a8ae9a3bcb37",        "title" : "PRESENTASJON",        "portFolioSceneId" : null,        "description" : "Presenter og diskuter de ulike tweetsene som er samlet inn om hver av energikildene.",        "icon" : "4-1.png"      },      {        "taskType" : "assets",        "id" : "50f689c2b760de188086ebe1",        "title" : "IPAD RESSURSER",        "portFolioSceneId" : "null",        "description" : "Her finner du bilder av tweetspresentasjonene dere hadde i museet. Velger du ulike energikilder under overskriften Presentasjon, kan du lagre et bilde av det du ser på skjermen. Disse tweetsene kan være relevante å se på når dere skal skrive avisartikkelen.",        "icon" : "4-1.png"      }    ],    "id" : "50ab47d7300480c12ec3697e",    "title" : "Museumsbesøk",    "icon" : "4.png"  },  {    "stasks" : [      {        "taskType" : "simulation",        "id" : "50ab488b300480c12ec369a8",        "title" : "VARMEOVERFØRING",        "portFolioSceneId" : null,        "description" : "1. Velg ulike utetemperaturer ved å flytte på den høyre pilen. <br /><br />2. Beskriv hvilken effekt de ulike valgene har for temperaturen i huset. <br /><br />Bruk besvarelsesfeltene til å formulere en generell sammenheng mellom ute og innetemperatur. Skriv også gjerne ned spørsmål om det er noe dere lurer på.",        "icon" : "5-1.png"      },      {        "taskType" : "simulation",        "id" : "50ab488f300480c12ec369b8",        "title" : "KOMPONENTER",        "portFolioSceneId" : null,        "description" : "1. Varmepumpen består av fire hoveddeler som dere kan finne ved å føre musen over modellen. Hvilke deler er dette og hvilken jobb gjør de i varmepumpen? <br /><br />2. Velg ulike utetemperaturer ved å flytte på den høyre pilen. Hva skjer med modellen og hvorfor skjer dette? <br /><br />Bruk besvarelsesfeltene til å formulere svar og skriv også gjerne ned spørsmål om det er noe dere lurer på.",        "icon" : "5-1.png"      },      {        "taskType" : "simulation",        "id" : "50ab4893300480c12ec369c9",        "title" : "TRYKKVARIASJONER",        "portFolioSceneId" : null,        "description" : "Start varmepumpen.<br /><br />1. Før musen over modellen for å undersøke trykk og temperatur i ulike deler av varmepumpemodellen. <br /><br />2. Velg ulike utetemperaturer ved å flytte på den høyre pilen. Hva skjer med trykket og temperaturen i de ulike delene av varmepumpen og hvorfor skjer dette? <br /><br />Bruk besvarelsesfeltene til å formulere svar og skriv også gjerne ned spørsmål om det er noe dere lurer på.",        "icon" : "5-1.png"      }    ],    "id" : "50ab4863300480c12ec36999",    "title" : "Simulering",    "icon" : "5.png"  },  {    "stasks" : [      {        "taskType" : "assets",        "id" : "50ab48ee300480c12ec369ee",        "title" : "ENERGIOVERFØRING",        "portFolioSceneId" : null,        "description" : "Bruk det utdelte arket.<br /><br />1. Tegn og forklar hvordan dere forstår energioverføring med et selvvalgt eksempel og i varmepumpen. <br /><br />Skriv navn, sidetall og oppgavenavn på alle ark. Bruk iPoden til å ta bilde av hvert av arkene.",        "icon" : "6-1.png"      },      {        "taskType" : "assets",        "id" : "50b72f4b3004f156c7166e44",        "title" : "FYSISKE PRINSIPPER",        "portFolioSceneId" : null,        "description" : "Her skal dere først jobbe to og to (eventuelt tre) og bruke den utdelte laminerte modellen av varmepumpen og de laminerte brikkene med symboler av sprayboks, sprøyte, og sykkelpumpe. <br /><br />1. Tenk på de fysiske prosessene hvert av de tre symbolene representerte og plasser disse der dere mener de hørere hjemme i varmepumpen. <br /><br />2. Gå sammen i gruppen og diskuter hva dere har kommet frem til og hva dere vil argumentere for i plenumsoppsummeringen.",        "icon" : "6-1.png"      }    ],    "id" : "50ab48bf300480c12ec369db",    "title" : "Fysiske Prinsipper",    "icon" : "6.png"  },  {    "stasks" : [      {        "taskType" : "article",        "id" : "50ab4934300480c12ec36a17",        "title" : "AVISARTIKKEL",        "portFolioSceneId" : null,        "description" : "1. Bli enige om et tema, identifiser nøkkelord, og bli enige om en arbeidsdeling. <br /><br />2. Bruk google docs dokumentet i SciWork.",        "icon" : "7-1.png"      }    ],    "id" : "50ab4915300480c12ec36a02",    "title" : "Avisartikkel",    "icon" : "7.png"  },  {    "stasks" : [      {        "taskType" : "portfolio",        "id" : "50c6f7c0b76016438b308770",        "title" : "EKSPERIMENTER",        "portFolioSceneId" : "50ab4672300480c12ec36954",        "description" : "1. Velg ett av eksperimentene dere gjorde med sprayboks, sykkelpumpe, eller sprøyte. Bruk en av videoene dere allerede har levert, bilder dere tok, eller ta en ny video/nye bilder der dere beskriver hva dere gjør og forklar hva dette illustrerer.",        "icon" : "8-1.png"      },      {        "taskType" : "portfolio",        "id" : "50c6f80cb76016438b30878a",        "title" : "MUSEUMSBESØK",        "portFolioSceneId" : "50ab47d7300480c12ec3697e",        "description" : "Hva gjorde dere med varmepumpespillet og hvordan kan dere forklare det dere observerte? Skriv og bruk bilder dere tok som illustrasjon.",        "icon" : "8-1.png"      },      {        "taskType" : "portfolio",        "id" : "50c6f83fb76016438b3087a5",        "title" : "SIMULERING",        "portFolioSceneId" : "50ab4863300480c12ec36999",        "description" : "Redegjør for varmepumpemodellen og beskriv hvordan den virker. Gå tilbake til simuleringen og i fullskjerm modus. Der har dere muligheten til å ta ett eller flere bilder.",        "icon" : "8-1.png"      },      {        "taskType" : "portfolio",        "id" : "50c6f85bb76016438b3087c1",        "title" : "FYSISKE PRINSIPPER",        "portFolioSceneId" : "50ab48bf300480c12ec369db",        "description" : "Legg ved de individuelle energioverføringstekstene.",        "icon" : "8-1.png"      }    ],    "id" : "50ab4945300480c12ec36a2d",    "title" : "Mappe",    "icon" : "8.png"  }]'));
+				
+				tabs = new ArrayCollection();
+				
+				//loop through all the scenes object
+				for each (var scene:Object in res) {
+					tasks = new ArrayCollection();
+					//loop through all the tasks for current scene
+					for each (var task:Object in scene.stasks as Array) {
+						
+						if(task.icon == "") {
+							task.icon = "notask.png";
+						}
+						tasks.addItem({label: task.title, taskId: task.id, icon: task.icon, portFolioSceneId: task.portFolioSceneId});
+					}
+					
+					if(scene.icon == "") {
+						scene.icon = "noscene.png";
+					}					
+					//build menu collection
+					tabs.addItem({label: scene.title, sceneId: scene.id, tasks: tasks, icon: scene.icon});
+				}
+				
+				dividerColor = uint(mx.core.FlexGlobals.topLevelApplication.currentGroup.colour);
+				
+				//fetch the content for the first scene if it exists
+				if(tabs.length > 0) {
+					selectFirstTask(0);
+					
+					var tbe:TabbarLoadedEvent = new TabbarLoadedEvent(resourceManager.getString('resources', 'TABBAR_LOADED'), true);
+					tbe.menu = tabs;
+					tbe.menuItemWidth = 1002/tabs.length;
+					dispatchEvent(tbe);
+				}
+				
+			}
+			
+			/**
+			 *
+			 * Dispatch event to get the content of first task for a given scene 
+			 * 
+			 **/
+			public function selectFirstTask(sceneNumber:Number):void {
+				taskBar.dataProvider = (tabs.getItemAt(sceneNumber)).tasks as ArrayCollection;
+				var tce:TaskChangeEvent = new TaskChangeEvent(resourceManager.getString('resources', 'TASK_CHANGED'), true);
+				
+				//check that the scene has tasks before fetching content
+				if(tabs[sceneNumber].tasks.length > 0) {
+					tce.task = tabs[sceneNumber].tasks[0];
+					taskBar.validateNow();
+					taskBar.selectedIndex = 0;
+					dispatchEvent(tce);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" gap="0">
+		<s:filters>
+			<s:DropShadowFilter 
+				distance="3" alpha=".5" blurX="7" blurY="7"
+				angle="90" />
+		</s:filters>
+		<s:ButtonBar id="sceneBar" focusEnabled="false" dataProvider="{tabs}" width="1000" height="40" requireSelection="true" change="sceneBar_changeHandler(event)" skinClass="skins.buttonBarSkin">
+			<s:layout>
+				<s:HorizontalLayout gap="-1" variableColumnWidth="false" columnWidth="{1002/tabs.length}" />
+			</s:layout>
+		</s:ButtonBar>
+		<s:Rect width="100%" height="4">
+			<s:fill>
+				<s:SolidColor color="{dividerColor}" />
+			</s:fill>
+		</s:Rect>
+		<s:Group width="100%">
+			<s:Rect width="100%" height="100%">
+				<s:fill>
+					<s:SolidColor color="#EEEEEE" />
+				</s:fill>
+			</s:Rect>
+			<s:ButtonBar width="1000" id="taskBar" focusEnabled="false" requireSelection="true" change="taskBar_changeHandler(event)" skinClass="skins.taskButtonBarSkin">
+				<s:layout>
+					<s:HorizontalLayout gap="-1" variableColumnWidth="false" columnWidth="{sceneBar.width/tabs.length}" />
+				</s:layout>
+			</s:ButtonBar>
+		</s:Group>
+	</s:VGroup>
+	
+</s:Group>

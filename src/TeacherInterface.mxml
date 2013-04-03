@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:content="content.*" xmlns:simulation="simulation.*" xmlns:workarea="content.workarea.*" creationComplete="initGroup(event)" xmlns:components="components.*">
+	
+	<fx:Declarations>
+		<!-- s:HTTPService method="GET" result="getTask_resultHandler(event)" fault="getTask_faultHandler(event)" resultFormat="text" id="getTask" /-->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import listeners.ShowWebPage;
+			import listeners.TaskPortfolioUpdateEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			[Bindable] private var _description:String = "";
+			[Bindable] private var _currentGroup:Object;
+			[Bindable] private var _task:Object;
+			[Bindable] private var _htmlLocation:String = "";
+			
+			/**
+			 *
+			 * called when a new scene is selected 
+			 * 
+			 **/
+			public function changeScene():void {
+				this.currentState = "contentState";
+				//reset left panels
+				_description = "";
+				resetNRJ();
+			}
+			
+			/**
+			 *
+			 * called to reset NRJ if necessary 
+			 * 
+			 **/
+			public function resetNRJ():void {
+				workareaContainer.resetEnergySource();
+			}
+			
+			/**
+			 *
+			 * called when a new task is selected 
+			 * 
+			 **/
+			public function changeTask(task:Object, currentGroup:Object):void {
+				_task = task;
+				_currentGroup = currentGroup;
+				
+				//fetch the inherent tasks for the selected taskid
+				//getTask.url = resourceManager.getString('resources', 'SERVER_URL') + "/task/" + _task.taskId;
+				//getTask.send();
+				
+				getTask_resultHandler();
+			}
+			
+			/**
+			 *
+			 * Result handling method for getTask service 
+			 * 
+			 **/
+			protected function getTask_resultHandler():void {
+				
+				//store the returned object as JSON 
+				var res:Object;
+				
+				switch(_task.taskId) {
+					case '50ab3fa5300480c12ec3692f':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 09:30:29 CET 2012",  "taskType" : "questions",  "actId" : null,  "id" : "50ab3fa5300480c12ec3692f",  "title" : "SPØRSMÅL 1",  "portFolioSceneId" : null,  "description" : "Hva er energi?<br /><br />Bruk iPoden til å besvare oppgaven.",  "icon" : "1-1.png",  "sceneId" : "50ab3f4b300480c12ec3692c"}'));
+						break;
+					}
+						
+					case '50ab3fb7300480c12ec36933':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 09:30:47 CET 2012",  "taskType" : "questions",  "actId" : null,  "id" : "50ab3fb7300480c12ec36933",  "title" : "SPØRSMÅL 2",  "portFolioSceneId" : null,  "description" : "Hvordan henger energi sammen med fenomener du observer rundt deg?<br /><br />Bruk iPoden til å besvare oppgaven.",  "icon" : "1-1.png",  "sceneId" : "50ab3f4b300480c12ec3692c"}'));
+						break;
+					}
+						
+					case '50ab3fd1300480c12ec36938':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 09:31:13 CET 2012",  "taskType" : "questions",  "actId" : null,  "id" : "50ab3fd1300480c12ec36938",  "title" : "SPØRSMÅL 3",  "portFolioSceneId" : null,  "description" : "Hvordan kan energi skifte form?<br /><br />Bruk iPoden til å besvare oppgaven.",  "icon" : "1-1.png",  "sceneId" : "50ab3f4b300480c12ec3692c"}'));
+						break;
+					}
+						
+					case '50ab4629300480c12ec36945':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 09:58:17 CET 2012",  "taskType" : "tweets",  "actId" : null,  "id" : "50ab4629300480c12ec36945",  "title" : "TWEET",  "portFolioSceneId" : null,  "description" : "Undersøk energikilden dere har ansvaret for.<br /><br />Svar på så mange av disse spørsmålene som dere klarer, og finn gjerne andre fakta om energikilden også. <ul><li>Hvordan produseres energien?</li><li>Hvordan omformes og bæres energien?</li><li>Hvordan blir energien utnyttet?</li><li>Hva er den mest egnet til?</li><li>Hvor viktig er den?</li><li>Hvor mye har vi av denne energiressursen i Norge?</li></ul><br /><br />Bruk læreboka og søk på nettet. Bruk iPoden til å skrive tweets. Husk å merke disse med # og så kilden før dere skriver faktaene.",  "icon" : "2-1.png",  "sceneId" : "50ab453c300480c12ec3693e"}'));
+						break;
+					}
+						
+					case '50ab46d2300480c12ec3695d':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:01:06 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50ab46d2300480c12ec3695d",  "title" : "SPRAYBOKS",  "portFolioSceneId" : null,  "description" : "1. Trykk på ventilen.<br /><br />2. Beskriv hva dere opplever og kjenner.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sprayboks på andre måter om dere har en hypotese eller en idé dere vil teste ut.",  "icon" : "3-1.png",  "sceneId" : "50ab4672300480c12ec36954"}'));
+						break;
+					}
+						
+					case '50ab4724300480c12ec36967':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:02:28 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50ab4724300480c12ec36967",  "title" : "SYKKELPUMPE",  "portFolioSceneId" : null,  "description" : "1. Press fingeren hardt mot ventilen og pump kraftig flere ganger.<br /><br />2. Beskriv hva dere gjør, opplever og kjenner.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sykkelpumpen på andre måter om dere har en hypotese eller en idé dere vil teste ut.",  "icon" : "3-2.png",  "sceneId" : "50ab4672300480c12ec36954"}'));
+						break;
+					}
+						
+					case '50ab4779300480c12ec36972':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:03:53 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50ab4779300480c12ec36972",  "title" : "SPRØYTE",  "portFolioSceneId" : null,  "description" : "1. Fyll opp sprøyta med varmt vann til den er omtrent halvfull. Ta ut luften som er mellom vannet og åpningen. Hold fingeren hardt foran åpningen og dra (ikke skyv).<br /><br />2. Beskriv hva dere ser.<br /><br />3. Hvilke sammenhenger er det mellom det dere gjør, opplever eller kjenner? Hvordan vil dere forklare det?<br /><br />Bruk iPoden til å ta en kort video der dere demonstrerer forsøket og hvordan dere forstår dette. Ta gjerne flere videoer av samme forsøk, men merk ut den dere sender til fellespresentasjon.<br /><br />Utfordring: Bruk gjerne sprøyten på andre måter om dere har en hypotese eller en idé dere vil teste ut.",  "icon" : "3-3.png",  "sceneId" : "50ab4672300480c12ec36954"}'));
+						break;
+					}
+						
+					case '50ab4845300480c12ec3698b':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:07:17 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50ab4845300480c12ec3698b",  "title" : "VARMEPUMPESPILL",  "portFolioSceneId" : null,  "description" : "Prøv varmepumpespillet. Beskriv hva dere ser og føler. <br /><br />Ta en kort video, og noen bilder, der dere forsøker å forklare hvorfor huset blir varmere og kaldere til tross for temperaturendringene ute. Bruk gjerne iPoden til å ta flere videoer av samme forsøk, men merk ut den dere sender til bruk i en plenumspresentasjon.",  "icon" : "4-1.png",  "sceneId" : "50ab47d7300480c12ec3697e"}'));
+						break;
+					}
+						
+					case '50c5c602b760a8ae9a3bcb37':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Mon Dec 10 12:22:42 CET 2012",  "taskType" : "tweets",  "actId" : null,  "id" : "50c5c602b760a8ae9a3bcb37",  "title" : "PRESENTASJON",  "portFolioSceneId" : null,  "description" : "Presenter og diskuter de ulike tweetsene som er samlet inn om hver av energikildene.",  "icon" : "4-1.png",  "sceneId" : "50ab47d7300480c12ec3697e"}'));
+						break;
+					}
+						
+					case '50f689c2b760de188086ebe1':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Wed Jan 16 12:06:42 CET 2013",  "taskType" : "assets",  "actId" : null,  "id" : "50f689c2b760de188086ebe1",  "title" : "IPAD RESSURSER",  "portFolioSceneId" : "null",  "description" : "Her finner du bilder av tweetspresentasjonene dere hadde i museet. Velger du ulike energikilder under overskriften Presentasjon, kan du lagre et bilde av det du ser på skjermen. Disse tweetsene kan være relevante å se på når dere skal skrive avisartikkelen.",  "icon" : "4-1.png",  "sceneId" : "50ab47d7300480c12ec3697e"}'));
+						break;
+					}
+						
+					case '50ab488b300480c12ec369a8':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:08:27 CET 2012",  "taskType" : "simulation",  "actId" : null,  "id" : "50ab488b300480c12ec369a8",  "title" : "VARMEOVERFØRING",  "portFolioSceneId" : null,  "description" : "1. Velg ulike utetemperaturer ved å flytte på den høyre pilen. <br /><br />2. Beskriv hvilken effekt de ulike valgene har for temperaturen i huset. <br /><br />Bruk besvarelsesfeltene til å formulere en generell sammenheng mellom ute og innetemperatur. Skriv også gjerne ned spørsmål om det er noe dere lurer på.",  "icon" : "5-1.png",  "sceneId" : "50ab4863300480c12ec36999"}'));
+						break;
+					}
+						
+					case '50ab488f300480c12ec369b8':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:08:31 CET 2012",  "taskType" : "simulation",  "actId" : null,  "id" : "50ab488f300480c12ec369b8",  "title" : "KOMPONENTER",  "portFolioSceneId" : null,  "description" : "1. Varmepumpen består av fire hoveddeler som dere kan finne ved å føre musen over modellen. Hvilke deler er dette og hvilken jobb gjør de i varmepumpen? <br /><br />2. Velg ulike utetemperaturer ved å flytte på den høyre pilen. Hva skjer med modellen og hvorfor skjer dette? <br /><br />Bruk besvarelsesfeltene til å formulere svar og skriv også gjerne ned spørsmål om det er noe dere lurer på.",  "icon" : "5-1.png",  "sceneId" : "50ab4863300480c12ec36999"}'));
+						break;
+					}
+						
+					case '50ab4893300480c12ec369c9':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:08:35 CET 2012",  "taskType" : "simulation",  "actId" : null,  "id" : "50ab4893300480c12ec369c9",  "title" : "TRYKKVARIASJONER",  "portFolioSceneId" : null,  "description" : "Start varmepumpen.<br /><br />1. Før musen over modellen for å undersøke trykk og temperatur i ulike deler av varmepumpemodellen. <br /><br />2. Velg ulike utetemperaturer ved å flytte på den høyre pilen. Hva skjer med trykket og temperaturen i de ulike delene av varmepumpen og hvorfor skjer dette? <br /><br />Bruk besvarelsesfeltene til å formulere svar og skriv også gjerne ned spørsmål om det er noe dere lurer på.",  "icon" : "5-1.png",  "sceneId" : "50ab4863300480c12ec36999"}'));
+						break;
+					}
+						
+					case '50ab48ee300480c12ec369ee':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:10:06 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50ab48ee300480c12ec369ee",  "title" : "ENERGIOVERFØRING",  "portFolioSceneId" : null,  "description" : "Bruk det utdelte arket.<br /><br />1. Tegn og forklar hvordan dere forstår energioverføring med et selvvalgt eksempel og i varmepumpen. <br /><br />Skriv navn, sidetall og oppgavenavn på alle ark. Bruk iPoden til å ta bilde av hvert av arkene.",  "icon" : "6-1.png",  "sceneId" : "50ab48bf300480c12ec369db"}'));
+						break;
+					}
+						
+					case '50b72f4b3004f156c7166e44':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Thu Nov 29 10:47:55 CET 2012",  "taskType" : "assets",  "actId" : null,  "id" : "50b72f4b3004f156c7166e44",  "title" : "FYSISKE PRINSIPPER",  "portFolioSceneId" : null,  "description" : "Her skal dere først jobbe to og to (eventuelt tre) og bruke den utdelte laminerte modellen av varmepumpen og de laminerte brikkene med symboler av sprayboks, sprøyte, og sykkelpumpe. <br /><br />1. Tenk på de fysiske prosessene hvert av de tre symbolene representerte og plasser disse der dere mener de hørere hjemme i varmepumpen. <br /><br />2. Gå sammen i gruppen og diskuter hva dere har kommet frem til og hva dere vil argumentere for i plenumsoppsummeringen.",  "icon" : "6-1.png",  "sceneId" : "50ab48bf300480c12ec369db"}'));
+						break;
+					}
+						
+					case '50ab4934300480c12ec36a17':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Nov 20 10:11:16 CET 2012",  "taskType" : "article",  "actId" : null,  "id" : "50ab4934300480c12ec36a17",  "title" : "AVISARTIKKEL",  "portFolioSceneId" : null,  "description" : "1. Bli enige om et tema, identifiser nøkkelord, og bli enige om en arbeidsdeling. <br /><br />2. Bruk google docs dokumentet i SciWork.",  "icon" : "7-1.png",  "sceneId" : "50ab4915300480c12ec36a02"}'));
+						break;
+					}
+						
+					case '50c6f7c0b76016438b308770':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Dec 11 10:07:12 CET 2012",  "taskType" : "portfolio",  "actId" : null,  "id" : "50c6f7c0b76016438b308770",  "title" : "EKSPERIMENTER",  "portFolioSceneId" : "50ab4672300480c12ec36954",  "description" : "1. Velg ett av eksperimentene dere gjorde med sprayboks, sykkelpumpe, eller sprøyte. Bruk en av videoene dere allerede har levert, bilder dere tok, eller ta en ny video/nye bilder der dere beskriver hva dere gjør og forklar hva dette illustrerer.",  "icon" : "8-1.png",  "sceneId" : "50ab4945300480c12ec36a2d"}'));
+						break;
+					}
+						
+					case '50c6f80cb76016438b30878a':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Dec 11 10:08:28 CET 2012",  "taskType" : "portfolio",  "actId" : null,  "id" : "50c6f80cb76016438b30878a",  "title" : "MUSEUMSBESØK",  "portFolioSceneId" : "50ab47d7300480c12ec3697e",  "description" : "Hva gjorde dere med varmepumpespillet og hvordan kan dere forklare det dere observerte? Skriv og bruk bilder dere tok som illustrasjon.",  "icon" : "8-1.png",  "sceneId" : "50ab4945300480c12ec36a2d"}'));
+						break;
+					}
+						
+					case '50c6f83fb76016438b3087a5':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Dec 11 10:09:19 CET 2012",  "taskType" : "portfolio",  "actId" : null,  "id" : "50c6f83fb76016438b3087a5",  "title" : "SIMULERING",  "portFolioSceneId" : "50ab4863300480c12ec36999",  "description" : "Redegjør for varmepumpemodellen og beskriv hvordan den virker. Gå tilbake til simuleringen og i fullskjerm modus. Der har dere muligheten til å ta ett eller flere bilder.",  "icon" : "8-1.png",  "sceneId" : "50ab4945300480c12ec36a2d"}'));
+						break;
+					}
+						
+					case '50c6f85bb76016438b3087c1':
+					{
+						res = com.adobe.serialization.json.JSON.decode(new String('{  "postedAt" : "Tue Dec 11 10:09:47 CET 2012",  "taskType" : "portfolio",  "actId" : null,  "id" : "50c6f85bb76016438b3087c1",  "title" : "FYSISKE PRINSIPPER",  "portFolioSceneId" : "50ab48bf300480c12ec369db",  "description" : "Legg ved de individuelle energioverføringstekstene.",  "icon" : "8-1.png",  "sceneId" : "50ab4945300480c12ec36a2d"}'));
+						break;
+					}
+				}
+				
+				_description = res.description;
+				updateResources(res.title);
+			
+				if(res.taskType == "portfolio") {
+					if(this.currentState != "portfolioState")
+						this.currentState = "portfolioState";
+					taskOverview.setTask(res);
+				}
+				else {
+					this.currentState = "contentState";
+					workareaContainer.updateCurrentState(res.taskType);
+				}
+			}
+			
+			/**
+			 * 
+			 * Error handling method for getTask service
+			 * 
+			 **/
+			protected function getTask_faultHandler(event:FaultEvent):void {
+				
+				Alert.show(sciwork.ALERT_TEXT21, "Task service error");
+				
+			}
+			
+			/**
+			 * 
+			 * public method to stop the videoPlayer
+			 * 
+			 **/
+			public function stopPlayingMedia():void {
+				if(workareaContainer.preview.videoViewer.player != null) {
+					workareaContainer.preview.videoViewer.player.stopVideo();
+				}
+			}
+			
+			/**
+			 * 
+			 * Function to call the GDrive service and obtain a listing of resources
+			 * 
+			 **/
+			protected function updateResources(taskName:String):void {
+				resourceContainer.currentState = "loading";
+				
+				var params:Object = new Object();
+				params.folderName = taskName;
+				
+				//create urlrequest with correct headers
+				var urlRequest:URLRequest = new URLRequest("http://scihub.uio.no:4568/gdriveFiles");
+				urlRequest.method = URLRequestMethod.POST;
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				
+				//load the url and define listeners
+				var uploader:URLLoader = new URLLoader();
+				uploader.addEventListener(Event.COMPLETE, handlePostKeywordsComplete);
+				uploader.addEventListener(IOErrorEvent.IO_ERROR, handlePostKeywordsIOerror);
+				uploader.load(urlRequest);
+			}
+			
+			/**
+			 * 
+			 * Event handling method handlePostKeywordsComplete
+			 * 
+			 **/
+			protected function handlePostKeywordsComplete(ev:Event):void {
+				//extract result as JSON
+				var res:Array = com.adobe.serialization.json.JSON.decode(String(ev.target.data));
+				
+				var resourceArray:ArrayCollection = new ArrayCollection();
+				for each (var resource:Object in res) {
+					
+					resourceArray.addItem(resource);
+					
+				}
+				
+				resourceContainer.content = resourceArray;
+				resourceContainer.currentState = "loaded";
+			}
+			
+			/**
+			 * 
+			 * Event handling method handlePostKeywordsIOerror
+			 * 
+			 **/
+			protected function handlePostKeywordsIOerror(ev:IOErrorEvent):void {
+				Alert.show(sciwork.ALERT_TEXT22, "GDrive service error");
+			}
+			
+			/**
+			 * 
+			 * Init function for this component 
+			 * 
+			 **/
+			protected function initGroup(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'TASK_PORTFOLIO_UPDATE'), handleTaskPortfolioUpdateRequest);
+			}
+		
+			/**
+			 * 
+			 * Event handling method for TASK_PORTFOLIO_UPDATE
+			 * 
+			 **/
+			protected function handleTaskPortfolioUpdateRequest(evt:TaskPortfolioUpdateEvent):void {
+				var params:Object = new Object();
+				params.taskId = _task.taskId;
+				params.groupId = _currentGroup.id;
+				params.isTaskCompleted = evt.isTaskCompleted;
+				
+				//create urlrequest with correct headers
+				var urlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL') + "/tasksCompleted/");
+				urlRequest.method = URLRequestMethod.PUT;
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				
+				//load the url and define listeners
+				var uploader:URLLoader = new URLLoader();
+				uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, handleTaskPortfolioUpdateComplete);
+				uploader.addEventListener(IOErrorEvent.IO_ERROR, handleTaskPortfolioUpdateIOerror);
+				uploader.load(urlRequest);
+				
+			}
+			
+			/**
+			 * 
+			 * Event handling method handleTaskPortfolioUpdateComplete
+			 * 
+			 **/
+			protected function handleTaskPortfolioUpdateComplete(ev:HTTPStatusEvent):void {
+				//analyse returned status code
+				switch(ev.status) {
+					case 0:
+						//service not available
+						Alert.show(sciwork.ALERT_TEXT23, "Task portfolio service error");
+						break;
+					case 200:
+						dispatchEvent(new Event(resourceManager.getString('resources', 'REFRESH_COMPLETED_TASKS'), true));
+						break;
+					case 401:
+						//update not OK, wrong password
+						Alert.show(sciwork.ALERT_TEXT24, "Task portfolio service error");
+						break;
+				}
+			}
+			
+			/**
+			 * 
+			 * Event handling method handleTaskPortfolioUpdateIOerror
+			 * 
+			 **/
+			protected function handleTaskPortfolioUpdateIOerror(ev:IOErrorEvent):void {
+				Alert.show(sciwork.ALERT_TEXT25, "Task portfolio service error");
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="contentState" />
+		<s:State name="webState" />
+		<s:State name="portfolioState" />
+	</s:states>
+	
+	<s:HGroup id="contentContainer" width="100%" height="100%" includeIn="contentState" gap="{sciwork._gapBetweenContainers}">
+		<s:VGroup width="200" height="100%" gap="{sciwork._gapBetweenContainers}">
+			<content:Activity id="activityContainer" width="100%" height="100%" content="{_description}" />
+			<content:Resources id="resourceContainer" width="100%" height="150" />
+		</s:VGroup>
+		<workarea:TeacherWorkArea id="workareaContainer" width="100%" height="100%" task="{_task}" currentGroup="{_currentGroup}"/>
+	</s:HGroup>
+	
+	<s:Group width="100%" height="100%" itemDestructionPolicy="auto" includeIn="portfolioState" >
+		<components:TaskOverview id="taskOverview" width="100%" height="100%"/>
+	</s:Group>
+	
+</s:Group>

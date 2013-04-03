@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:components="components.*">
+	
+	<fx:Declarations>
+		<fx:Object id="comment" />
+		<fx:String id="groupId" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import mx.controls.Alert;
+			
+			import spark.events.TextOperationEvent;
+			[Bindable] private var canSave:Boolean = false;
+			
+			public function updateCommentArea(comment:PortfolioTaskComment, groupId:String):void {
+				this.groupId = groupId;
+				this.comment = comment;
+				commentArea.text = comment.text;
+			}
+			
+			protected function handleTextChange(event:TextOperationEvent):void {
+				if(comment.text != commentArea.text) {
+					canSave = true;
+					dispatchEvent(new Event(resourceManager.getString('resources', 'UNSAVED_EDIT_TRUE'), true));
+				}
+				else {
+					canSave = false;
+					dispatchEvent(new Event(resourceManager.getString('resources', 'UNSAVED_EDIT_FALSE'), true));
+				}
+			}
+			
+			protected function saveAnswerBtn_clickHandler(event:MouseEvent):void {
+				canSave = false;
+				dispatchEvent(new Event(resourceManager.getString('resources', 'UNSAVED_EDIT_FALSE'), true));
+				this.currentState = "saving";
+				
+				var urlRequest:URLRequest;
+				var params:Object = new Object();
+				if(comment.id == null) {
+					urlRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL') + "/finalPortfolioTaskComment");
+					urlRequest.method = URLRequestMethod.POST;
+					params.taskId = comment.taskId;
+					params.groupId = groupId;
+					params.text = commentArea.text;
+				}
+				else {
+					urlRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL') + "/finalPortfolioTaskComment");
+					urlRequest.method = URLRequestMethod.PUT;
+					params.id = comment.id;
+					params.text = commentArea.text;
+				}
+				
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				
+				var loader:URLLoader = new URLLoader();
+				loader.addEventListener(Event.COMPLETE, questionCompleteHandler);
+				loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				loader.load(urlRequest);
+			}
+			
+			/**
+			 * 
+			 * Event handler for Event.COMPLETE
+			 * 
+			 **/
+			protected function questionCompleteHandler(evt:Event):void {
+				var returnedComment:Object = com.adobe.serialization.json.JSON.decode(String(evt.target.data));
+				comment.id = returnedComment.id;
+				comment.taskId = returnedComment.taskId;
+				comment.text = returnedComment.text;
+
+				this.currentState = "default";
+			}
+			
+			/**
+			 * 
+			 * Event handler for IOErrorEvent.IO_ERROR
+			 * 
+			 **/
+			protected function ioErrorHandler(evt:IOErrorEvent):void {
+				Alert.show(sciwork.ALERT_TEXT15, "TaskComment service error");
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="default" />
+		<s:State name="saving" />
+	</s:states>
+	
+	<s:VGroup width="100%" height="100%" gap="0">
+		<components:PortfolioCommentHeader width="100%" height="23" />
+		<s:BorderContainer width="100%" height="100%" borderAlpha=".3" borderWeight="2">
+			<s:Rect left="0" right="0" top="0" bottom="0">
+				<s:fill>
+					<s:LinearGradient rotation="90" >
+						<s:GradientEntry color="#EEEEEE" />
+						<s:GradientEntry color="#FFFFFF" />
+						<s:GradientEntry color="#FFFFFF" />
+					</s:LinearGradient>
+				</s:fill>
+			</s:Rect>
+			
+			<s:TextArea fontSize="11" left="5" right="5" top="5" bottom="5" id="commentArea" change="handleTextChange(event)" />
+		</s:BorderContainer>
+		<s:Button fontSize="11" buttonMode="true" width="100%" label="LAGRE" id="saveAnswerBtn" color="#333333" enabled="{canSave}" click="saveAnswerBtn_clickHandler(event)" />
+	</s:VGroup>
+	
+	<s:SkinnableContainer width="100%" height="100%" backgroundAlpha=".8" backgroundColor="#333333" includeIn="saving">
+		<s:BusyIndicator horizontalCenter="0" verticalCenter="0" />
+	</s:SkinnableContainer>
+</s:Group>

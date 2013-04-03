@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:listeners="listeners.*" xmlns:simulation="simulation.*" xmlns:components="components.*" borderVisible="false" scrollRect="{new Rectangle(0,0,1000,600)}" creationComplete="init(event)">
+	<fx:Declarations>
+		<!-- s:HTTPService method="GET" headers="{'pragma', 'no-cache'}" result="getQuestions_resultHandler(event)" fault="getQuestions_faultHandler(event)" resultFormat="text" id="getQuestions" showBusyCursor="true" /-->
+		<!-- s:HTTPService method="GET" headers="{'pragma', 'no-cache'}" result="getTweets_resultHandler(event)" fault="getTweets_faultHandler(event)" resultFormat="text" id="getTweets" showBusyCursor="true" /-->
+	</fx:Declarations>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.jonas.net.Multipart;
+			import com.pfp.events.JPEGAsyncCompleteEvent;
+			import com.pfp.utils.JPEGAsyncEncoder;
+			import com.seesmic.as3.xmpp.XMPP;
+			
+			import content.workarea.TeacherWorkArea;
+			import content.workarea.WorkArea;
+			import content.workarea.materials.MaterialsItem;
+			
+			import listeners.CaptureFullscreenEvent;
+			import listeners.ObjectDropEvent;
+			import listeners.QuestionsRefreshEvent;
+			import listeners.ShowFullscreenEvent;
+			import listeners.TweetsRefreshEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.IList;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.UIDUtil;
+			
+			private var sciApp:sciwork = mx.core.FlexGlobals.topLevelApplication as sciwork;
+			[Bindable] private var _htmlLocation:String = "";
+			[Bindable] private var _conn:XMPP = null;
+			private var asyncEncoder:JPEGAsyncEncoder;
+			
+			private var _groupId:String;
+			private var taskId:String;
+			private var questionsForGroup:Array;
+			private var tweetsForGroup:Array;
+			
+			public var inTeacherState:Boolean = false;
+			
+			/**
+			 *
+			 * Initialise the component 
+			 * 
+			 **/
+			public function init(evt:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'CAPTURE_FULLSCREEN'), captureScreen);
+				this.addEventListener(resourceManager.getString('resources', 'REFRESH_QUESTIONS'), refreshQuestions);
+				this.addEventListener(resourceManager.getString('resources', 'REFRESH_TWEETS'), refreshTweets);
+			}
+			
+			
+			/**
+			 *
+			 * Event handling method to display various fullscreen information 
+			 * 
+			 **/
+			public function handleShowFullscreen(evt:ShowFullscreenEvent, scene:Object, task:Object, conn:XMPP, groupId:String):void {
+				_conn = conn;
+				_groupId = groupId;
+				taskId = task.taskId;
+				if(evt.shouldShow) {
+					this.visible = true;
+					this.includeInLayout = true;
+					if(evt.mode == "tweets" && (evt.shouldShow || this.currentState == "tweets")) {
+						//pullOutMenu.visible = true;
+						this.currentState = "tweets";
+						//refresh the view
+						presentationGroupArea.removeAllElements();
+						
+						//build the correct arrays
+						var tweet:Tweet;
+						var tweetObject:Object;
+						for each (var twt:Object in evt.tweetsInView) {
+							tweet = new Tweet();
+							tweet.data = twt;
+							tweet.conn = _conn;
+							
+							//need to see if tweet is visisble
+							if(twt.isVisible) {
+								//place the tweets in the view
+								presentationGroupArea.addElement(tweet);
+							}
+						}
+					}
+					else if(evt.mode == "teacherTweets") {
+						this.currentState = "teacherTweets";
+						presentationGroupArea.removeAllElements();
+						//pullOutMenu.visible = true;
+						dispatchEvent(new TweetsRefreshEvent(resourceManager.getString('resources', 'REFRESH_TWEETS'), true));
+					}
+					else if(evt.mode == "teacherQuestions") {
+						this.currentState = "teacherQuestions";
+						presentationGroupArea.removeAllElements();
+						//pullOutMenu.visible = true;
+						dispatchEvent(new QuestionsRefreshEvent(resourceManager.getString('resources', 'REFRESH_QUESTIONS'), true));
+					}
+					else if(evt.mode == "simulation") {
+						this.currentState = "simulation";
+						//pullOutMenu.visible = true;
+						
+						simulate.setSimulationLevel(task.label);
+						
+					}
+					else if(evt.mode == "html") {
+						//pullOutMenu.visible = false;
+						this.currentState = "html";
+						URLRequestDefaults.userAgent = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_4; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8";
+						_htmlLocation = evt.url;
+						htmlBI.visible = true;
+					}
+					else if(evt.mode == "ipad") {
+						//pullOutMenu.visible = true;
+						this.currentState = "ipad";
+						ipadPresentation.initContainer();
+					}
+					else if(evt.mode == "picsvids") {
+						//pullOutMenu.visible = evt.showPullOutMenu;
+						this.currentState = "picsvids";
+						videoPicturePresentationContainer.previewMaterial(evt.material as MaterialsItem);
+					}
+				}
+			}
+
+			public function callHideFullscreen(evt:MouseEvent):void {
+				//need to quit ipad session if any
+				if(this.currentState == "ipad") {
+					ipadPresentation.disconnectCurrentSource(true);
+				}
+				
+				var stfe:ShowFullscreenEvent = new ShowFullscreenEvent(resourceManager.getString('resources', 'SHOW_FULLSCREEN'), true);
+				stfe.shouldShow = false;
+				dispatchEvent(stfe);
+				//pullOutMenu.closeTheDrawer();
+			}
+			/**
+			 *
+			 * Event handling method to close fullscreen
+			 * 
+			 **/
+			public function handeHideFullScreen(event:Event):void {
+				if(this.currentState == "html")
+					_htmlLocation='';
+				else if(this.currentState == "tweets")
+					sciApp.dispatchEventToWorkArea(new TweetsRefreshEvent(resourceManager.getString('resources', 'REFRESH_TWEETS'), true));
+				else if(this.currentState == "simulation") {
+					if(sciApp.currentState == "loggedIn")
+						sciApp.studentInterface.workareaContainer.preview.currentState = "simulationState";
+					else
+						sciApp.teacherInterface.workareaContainer.preview.currentState = "simulationState";
+				}
+				else if(this.currentState == "picsvids")
+					this.videoPicturePresentationContainer.videoViewer.player.stopVideo();
+				this.visible=false;
+				this.includeInLayout = false;
+				this.currentState = "disabled";
+			}
+			/**
+			 * 
+			 * Calls the questions service to get all questions
+			 * 
+			 **/
+			protected function refreshQuestions(evt:QuestionsRefreshEvent = null):void {
+				//get existing questions
+				//getQuestions.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/teacherTweet/" + taskId;
+				//getQuestions.send();
+				
+				getQuestions_resultHandler();
+			}
+			/**
+			 * 
+			 * Calls the tweet service to get all tweets for current group
+			 * 
+			 **/
+			protected function refreshTweets(evt:TweetsRefreshEvent):void {
+				//get existing tweets for the current task and group
+				//getTweets.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/teacherTweet/" + taskId;
+				//getTweets.send();
+				
+				getTweets_resultHandler();
+			}
+			/**
+			 *
+			 * Result handling method for getQuestions service 
+			 * 
+			 **/
+			protected function getQuestions_resultHandler():void {
+				switch(taskId) {
+					case '50ab3fa5300480c12ec3692f':
+					{
+						questionsForGroup = com.adobe.serialization.json.JSON.decode(new String('[  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b2608b7607b9a5bd96100",    "ypos" : 81,    "text" : "Alt som kan omdannes til arbeid, er energi. Energi finnes i ulike former, men det er to hovedformer. Potensiell og kinetisk energi. ",    "isVisible" : true,    "ownerName" : "LILLA",    "createdAt" : "Mon Feb 25 09:51:20 CET 2013",    "xpos" : 74  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b2651b7607b9a5bd96101",    "ypos" : 7,    "text" : "Alt som kan omdannes til arbeid, er energi. Det finnes i flere ulike formler. ",    "isVisible" : true,    "ownerName" : "GRÅ",    "createdAt" : "Mon Feb 25 09:52:33 CET 2013",    "xpos" : 3  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b2661b7607b9a5bd96103",    "ypos" : 19,    "text" : "Energi er alt som kan omdannes til arbeid. ",    "isVisible" : true,    "ownerName" : "ORANSJE",    "createdAt" : "Mon Feb 25 09:52:49 CET 2013",    "xpos" : 1  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b26e5b7607b9a5bd96105",    "ypos" : 30,    "text" : "Energi er det som får ting til å skje. Det kan verken oppstå eller forsvinne, bare omdannes.",    "isVisible" : true,    "ownerName" : "GRØNN",    "createdAt" : "Mon Feb 25 09:55:01 CET 2013",    "xpos" : 20  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b2742b7607b9a5bd96107",    "ypos" : 44,    "text" : "Alt som kan omdannes til arbeid, er energi. Det finnes i flere former. Hovedformene er #stillingsenergi og #bevegelsesenergi",    "isVisible" : true,    "ownerName" : "GRÅ",    "createdAt" : "Mon Feb 25 09:56:34 CET 2013",    "xpos" : 14  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b27b3b7607b9a5bd9610a",    "ypos" : 10,    "text" : "Energi er ikke noe man kan ta på men noe man kan føle #dypetweets ",    "isVisible" : true,    "ownerName" : "LILLA",    "createdAt" : "Mon Feb 25 09:58:27 CET 2013",    "xpos" : 50  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b27b9b7607b9a5bd9610b",    "ypos" : 24,    "text" : "Man kan skape også",    "isVisible" : true,    "ownerName" : "LILLA",    "createdAt" : "Mon Feb 25 09:58:33 CET 2013",    "xpos" : 53  },  {    "taskId" : "50ab3fa5300480c12ec3692f",    "id" : "512b281cb7607b9a5bd9610c",    "ypos" : 57,    "text" : "Energi får ting til å skje. Den forsvinner ikke. #appelsinteam",    "isVisible" : true,    "ownerName" : "ORANSJE",    "createdAt" : "Mon Feb 25 10:00:12 CET 2013",    "xpos" : 23  }]'));
+						break;
+					}
+						
+					case '50ab3fb7300480c12ec36933':
+					{
+						questionsForGroup = com.adobe.serialization.json.JSON.decode(new String('[  {    "taskId" : "50ab3fb7300480c12ec36933",    "id" : "512b286eb7607b9a5bd9610f",    "ypos" : 5,    "text" : "Fysiske hendelser oppstår via energibruk, eks. Lys fungerer med elektrisitet. ",    "isVisible" : true,    "ownerName" : "GRÅ",    "createdAt" : "Mon Feb 25 10:01:34 CET 2013",    "xpos" : 51  },  {    "taskId" : "50ab3fb7300480c12ec36933",    "id" : "512b2872b7607b9a5bd96110",    "ypos" : 24,    "text" : "Det kreves energi for at ting skal skje. #bigbangforeksempel",    "isVisible" : true,    "ownerName" : "LILLA",    "createdAt" : "Mon Feb 25 10:01:38 CET 2013",    "xpos" : 50  },  {    "taskId" : "50ab3fb7300480c12ec36933",    "id" : "512b2874b7607b9a5bd96111",    "ypos" : 33,    "text" : "Eksempel: varme",    "isVisible" : true,    "ownerName" : "GRØNN",    "createdAt" : "Mon Feb 25 10:01:40 CET 2013",    "xpos" : 56  },  {    "taskId" : "50ab3fb7300480c12ec36933",    "id" : "512b287bb7607b9a5bd96112",    "ypos" : 39,    "text" : " Fysiske hendelser som oppstår via #energibruk. For eksempel: lys fungerer med elektrisitet. Ulike fenomener har ulike egenskaper. ",    "isVisible" : true,    "ownerName" : "GRÅ",    "createdAt" : "Mon Feb 25 10:01:47 CET 2013",    "xpos" : 50  }]'));
+						break;
+					}
+						
+					case '50ab3fd1300480c12ec36938':
+					{
+						questionsForGroup = com.adobe.serialization.json.JSON.decode(new String('[  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b28e1b7607b9a5bd96113",    "ypos" : 22,    "text" : "I form av faseoverganger, f.eks fra væske til gass",    "isVisible" : true,    "ownerName" : "ORANSJE",    "createdAt" : "Mon Feb 25 10:03:29 CET 2013",    "xpos" : 36  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b28e8b7607b9a5bd96115",    "ypos" : 60,    "text" : "Vi har stillings energi og bevegelses energi. Når vi spiser så får vi energi fra maten, energien er allerede lagret i maten. Og via fordøyelsen spres energi rundt i kroppen og vi utnytter den når kroppen er i bevegelse! :-)",    "isVisible" : true,    "ownerName" : "GRÅ",    "createdAt" : "Mon Feb 25 10:03:36 CET 2013",    "xpos" : 53  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b28ebb7607b9a5bd96116",    "ypos" : 11,    "text" : "Energi endrer form i faseoverganger. Som for eksempel stillingsenergi og bevegelsesenergi",    "isVisible" : true,    "ownerName" : "GRØNN",    "createdAt" : "Mon Feb 25 10:03:39 CET 2013",    "xpos" : 49  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b28f0b7607b9a5bd96117",    "ypos" : 50,    "text" : "#bevegelsesenergi #stillingsenergi #faseoverganger ",    "isVisible" : true,    "ownerName" : "GRØNN",    "createdAt" : "Mon Feb 25 10:03:44 CET 2013",    "xpos" : 45  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b2919b7607b9a5bd96119",    "ypos" : 47,    "text" : "Energi blir aldri borte, det skifter bare form. Og det må tilføyes energi for at det skal skifte form. #foreksempel at stillingsenergi må bli tilføyer energi for at det skal bli gjort om til bevegelsesenergi #herjerpåspørsmålene #yolo #swag ",    "isVisible" : true,    "ownerName" : "LILLA",    "createdAt" : "Mon Feb 25 10:04:25 CET 2013",    "xpos" : 13  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b293fb7607b9a5bd9611a",    "ypos" : 76,    "text" : "Når en mann sykler, øverfører han energien til sykkelen og hjulet kan gi energien videre til en sykkellampe (termisk energi)",    "isVisible" : true,    "ownerName" : "BLÅ",    "createdAt" : "Mon Feb 25 10:05:03 CET 2013",    "xpos" : 46  },  {    "taskId" : "50ab3fd1300480c12ec36938",    "id" : "512b2942b7607b9a5bd9611b",    "ypos" : 10,    "text" : "Energien skifter form via ulike fenomener",    "isVisible" : true,    "ownerName" : "BLÅ",    "createdAt" : "Mon Feb 25 10:05:06 CET 2013",    "xpos" : 10  }]'));
+						break;
+					}
+				}
+				
+				
+				
+				//build the correct arrays
+				var tweet:Tweet;
+				for each (var twt:Object in questionsForGroup) {
+					tweet = new Tweet();
+					tweet.data = twt;
+					tweet.conn = _conn;
+					if(this.currentState == "teacherQuestions")
+						tweet.teacherMode = true;
+					
+					//need to see if tweet is visisble
+					if(twt.isVisible) {
+						//place the tweets in the view
+						presentationGroupArea.addElement(tweet);
+					}
+				}
+				
+			}
+			/**
+			 *
+			 * Result handling method for getTweets service 
+			 * 
+			 **/
+			protected function getTweets_resultHandler():void {
+				switch(taskId) {
+					case '50ab4629300480c12ec36945':
+					{
+						tweetsForGroup = com.adobe.serialization.json.JSON.decode(new String('[  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de01ab7601c0bcbaf8151",    "ypos" : 7,    "text" : "Energien bæres ved hjelp av solceller. Solceller tar energien direkte fra sola. En enkel solceller produserer imidlertid ikke nok strøm til å få lys i en lyspære. Derfor kobler man flere celler sammen i såkalte solcellepaneler. Solceller produserer elektrisitet på grunn av et fysisk fenomen.",    "isVisible" : true,    "ownerName" : "gra",    "createdAt" : "Wed Feb 27 11:29:46 CET 2013",    "xpos" : 49  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de065b7601c0bcbaf8153",    "ypos" : 44,    "text" : "#atomkraft spalter atom i en væske, vesken blir varm som gir energi til en turbin son igjen gir strøm til en dynamo",    "isVisible" : true,    "ownerName" : "bla",    "createdAt" : "Wed Feb 27 11:31:01 CET 2013",    "xpos" : 55  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de0cbb7601c0bcbaf8154",    "ypos" : 66,    "text" : "Vind oppstår fordi jord og hav blir ujevnt varmet opp av solstrålene. Varm luft har mindre egenvekt enn kald luft. Den ujevne oppvarmingen fører til forskjeller i trykk, og det får luften til å bevege seg #vind",    "isVisible" : true,    "ownerName" : "oransje",    "createdAt" : "Wed Feb 27 11:32:43 CET 2013",    "xpos" : 52  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de0dcb7601c0bcbaf8155",    "ypos" : 87,    "text" : "Vindkraft brukes til å sette båter i bevegelse, ved at vinden presser mot seilet #vind",    "isVisible" : true,    "ownerName" : "oransje",    "createdAt" : "Wed Feb 27 11:33:00 CET 2013",    "xpos" : 57  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de0edb7601c0bcbaf8156",    "ypos" : 80,    "text" : "Vindkraft er viktig fordi den er en kilde til elektrisitet og er fornybar og miljøvennlig #vind",    "isVisible" : true,    "ownerName" : "oransje",    "createdAt" : "Wed Feb 27 11:33:17 CET 2013",    "xpos" : 40  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de11eb7601c0bcbaf8157",    "ypos" : 5,    "text" : "Bølgeenergi er en fornybar energi #bølgeenergi",    "isVisible" : true,    "ownerName" : "rosa",    "createdAt" : "Wed Feb 27 11:34:06 CET 2013",    "xpos" : 31  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de124b7601c0bcbaf8158",    "ypos" : 13,    "text" : "Bølgeenergipotensiale uten for norgeskysten er stor #bølgeenergi",    "isVisible" : true,    "ownerName" : "rosa",    "createdAt" : "Wed Feb 27 11:34:12 CET 2013",    "xpos" : 29  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de14db7601c0bcbaf8159",    "ypos" : 31,    "text" : "Bioenergi er fornybar og en miljøvennlig til en viss grad. Fordi hvis du bruker for mye kan det bli forurensing i form av ufullstendig forbrenning fordi det ikke for nok luft/oksygen #bio",    "isVisible" : true,    "ownerName" : "lilla",    "createdAt" : "Wed Feb 27 11:34:53 CET 2013",    "xpos" : 27  },  {    "taskId" : "50ab4629300480c12ec36945",    "id" : "512de18eb7601c0bcbaf815b",    "ypos" : 54,    "text" : "Vannkraft produseres når vann er i bevegelse.  Vann har først stillingsenergi når det er i toppen av et fjell. Når dette vannet renner nedover fjellet så blir det omdannet til bevegelsesenergi. Dette vannet skaper en bevegelse i en turbin, turbinen setter i gang generatoren og rund generatoren er det en spoler og det dannes strøm #vannkraft #swagfish #badboy #yolo",    "isVisible" : true,    "ownerName" : "gronn",    "createdAt" : "Wed Feb 27 11:35:58 CET 2013",    "xpos" : 16  }]'));
+						break;
+					}
+						
+					case '50c5c602b760a8ae9a3bcb37':
+					{
+						tweetsForGroup = com.adobe.serialization.json.JSON.decode(new String('[]'));
+						break;
+					}
+				}
+				
+				
+				//build the correct arrays
+				var tweet:Tweet;
+				for each (var twt:Object in tweetsForGroup) {
+					tweet = new Tweet();
+					tweet.data = twt;
+					tweet.conn = _conn;
+					if(this.currentState == "teacherTweets")
+						tweet.teacherMode = true;
+					
+					//need to see if tweet is visisble
+					if(twt.isVisible) {
+						//place the tweets in the view
+						presentationGroupArea.addElement(tweet);
+					}
+				}
+				
+			}
+			/**
+			 * 
+			 * Error handling method for getTweets service
+			 * 
+			 **/
+			protected function getQuestions_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT1, "Questions service error");
+			}
+			/**
+			 * 
+			 * Error handling method for getTweets service
+			 * 
+			 **/
+			protected function getTweets_faultHandler(event:FaultEvent):void {
+				Alert.show(sciwork.ALERT_TEXT2, "Tweets service error");
+			}
+			/**
+			 * 
+			 * Function to hide the busyindicator after html page has loaded
+			 * 
+			 **/
+			protected function htmlLoded(event:Event):void {
+				htmlBI.visible = false;
+			}
+			
+			/**
+			 * 
+			 * function to save the groupcontainer as a picture
+			 * 
+			 **/
+			private function captureScreen(event:CaptureFullscreenEvent):void {
+				pbar.visible = true;
+				pbar.includeInLayout = true;
+				if(this.currentState == "simulation") {
+					pbarBG.visible = true;
+					pbarBG.includeInLayout = true;
+				}
+				//screenCaptureButton.visible = false;
+				//screenCaptureButton.includeInLayout = false;
+				//var compositionBitmapData:BitmapData = new BitmapData(contentFS.width,contentFS.height);
+				//need to specify the width and height, as the simulation is scaled and does not render properly
+				var compositionBitmapData:BitmapData = new BitmapData(1000, 520);
+				compositionBitmapData.draw(contentFS);
+				
+				asyncEncoder = new JPEGAsyncEncoder(100);
+				asyncEncoder.PixelsPerIteration = 128;
+				asyncEncoder.addEventListener(ProgressEvent.PROGRESS, updateProgress);
+				asyncEncoder.addEventListener(JPEGAsyncCompleteEvent.JPEGASYNC_COMPLETE, asyncComplete);
+				asyncEncoder.encode(compositionBitmapData);
+			}
+			
+			/**
+			 * 
+			 * function to handle encoding progress event
+			 * 
+			 **/
+			private function updateProgress(event:ProgressEvent):void {
+				pbar.setProgress(event.bytesLoaded, event.bytesTotal);
+				pbar.label = "Saving.. %3%%";
+			}
+			
+			/**
+			 * 
+			 * function to handle image posting when encoding progress is complete
+			 * 
+			 **/
+			private function asyncComplete(event:JPEGAsyncCompleteEvent):void {
+				var submitUrl:String = "";
+				if(inTeacherState) {
+					submitUrl = resourceManager.getString('resources', 'SERVER_URL')+"/teacherImage/"+taskId;					
+				}
+				else {
+					submitUrl = resourceManager.getString('resources', 'SERVER_URL')+"/image/"+_groupId+"/"+taskId+"/3";					
+				}
+				
+				var form:Multipart = new Multipart(submitUrl);
+				form.addFile("picture", event.ImageData, "application/octet-stream", UIDUtil.createUID()+".jpg", true);
+				
+				var loader:URLLoader = new URLLoader();
+				loader.addEventListener(Event.COMPLETE, onComplete);
+				try {
+					loader.load(form.request);
+				} catch (error: Error) {
+					Alert.show(sciwork.ALERT_TEXT3, "Image Upload error");
+					pbar.visible = false;
+					pbar.includeInLayout = false;
+					//screenCaptureButton.visible = true;
+					//screenCaptureButton.includeInLayout = true;
+				}
+			}
+			
+			/**
+			 * 
+			 * function called when image posting is complete
+			 * 
+			 **/
+			protected function onComplete (e: Event):void {
+				if(!inTeacherState && this.currentState == "simulation") {
+					var imageObject:Object = com.adobe.serialization.json.JSON.decode(e.target.data);
+					
+					var params:Object = new Object();
+					params.id = imageObject.id;
+					params.isPortfolio = true;
+					params.isFinalPortfolio = imageObject.isFinalPortfolio;
+					params.xpos = imageObject.xpos;
+					params.ypos = imageObject.ypos;
+					params.groupId = _groupId;
+					
+					var urlRequest:URLRequest;
+					urlRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL') + "/group/image/");
+					urlRequest.method = URLRequestMethod.PUT;
+					urlRequest.contentType = "application/json";
+					urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+					
+					//load the url and define listeners
+					var uploader:URLLoader = new URLLoader();
+					uploader.load(urlRequest);
+				}
+				
+				pbar.visible = false;
+				pbarBG.visible = false;
+				if(this.currentState == "simulation") {
+					pbarBG.includeInLayout = false;
+					pbar.includeInLayout = false;
+				}
+				//screenCaptureButton.visible = true;
+				//screenCaptureButton.includeInLayout = true;
+				
+				dispatchEvent(new Event(resourceManager.getString('resources', 'REFRESH_TWEETS_PORTFOLIO'), true));
+			}
+			
+			private function capture(evt:MouseEvent):void {
+				var cfse:CaptureFullscreenEvent = new CaptureFullscreenEvent(resourceManager.getString('resources', 'CAPTURE_FULLSCREEN'), true);
+				dispatchEvent(cfse);
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="disabled" />
+		<s:State name="tweets" />
+		<s:State name="teacherQuestions" />
+		<s:State name="teacherTweets" />
+		<s:State name="html" />
+		<s:State name="simulation" />
+		<s:State name="picsvids" />
+		<s:State name="ipad" />
+	</s:states>
+	
+	<s:filters>
+		<s:DropShadowFilter 
+			distance="3" alpha=".3" blurX="7" blurY="7"
+			angle="90" />
+	</s:filters>
+	
+	<!--s:Image source="assets/topBar.png" x="0" y="0" id="topBar" /-->
+	<s:VGroup width="100%" height="100%" gap="0">
+		<s:SkinnableContainer width="100%" height="40" skinClass="skins.selectionHeaderSkin" backgroundColor="#333333" excludeFrom="simulation" />
+		<s:Group height="100%" width="1000" clipAndEnableScrolling="true">
+			<s:Group width="100%" height="100%"  id="contentFS">
+				<s:Group includeIn="tweets, teacherQuestions, teacherTweets" width="100%" height="100%" >
+					<s:Group width="100%" height="100%" id="presentationGroupArea" />
+				</s:Group>
+				<s:Group includeIn="html" width="100%" height="100%">
+					<mx:HTML id="htmlLoader" width="100%" height="100%" location="{_htmlLocation}" complete="htmlLoded(event)" />
+					<s:BusyIndicator verticalCenter="0" horizontalCenter="0" id="htmlBI" />
+				</s:Group>
+				<s:Group includeIn="simulation" width="100%" height="100%" >
+					<simulation:Sim id="simulate" x="2" y="-30" />
+				</s:Group>
+				<components:VideoPicturePresentationContainer id="videoPicturePresentationContainer" visible.disabled="false" visible.tweets="false" visible.teacherQuestions="false" visible.teacherTweets="false" visible.html="false" visible.simulation="false" visible.ipad="false" visible.picsvids="true" width="100%" height="100%" />
+				<components:IPadPresentationContainer id="ipadPresentation" includeIn="ipad" width="100%" height="100%" />
+			</s:Group>
+			<!-- components:PullOutMenu id="pullOutMenu" height="518" x="1000" excludeFrom="html, simulation" y.simulation="30"/ -->
+		</s:Group>
+	</s:VGroup>
+	<s:BorderContainer id="pbarBG" borderVisible="false" backgroundColor="0x3980C1" right="50" alpha="0.5" top="5" width="90" visible="false" cornerRadius="2"/>
+	<!--s:Image source="assets/taBilde.png" id="screenCaptureButton" click="capture(event)" right="60" top="5" excludeFrom="picsvids" /-->
+	<!-- s:Button id="screenCaptureButton" right="60" top="5" buttonMode="true" width="84" height="24" icon="@Embed('assets/taBilde.png')" click="capture(event)" excludeFrom="picsvids,html"/-->
+	<mx:ProgressBar id="pbar" mode="manual" color="#ffffff" visible="false" includeInLayout="false" width="40" right="90" top="5" />
+	<s:Button buttonMode="true" right="2" top="1" width="20" icon="@Embed('assets/btn_close.png')" skinClass="skins.fullScreenButtonSkin" click="callHideFullscreen(event)" />
+</s:BorderContainer>

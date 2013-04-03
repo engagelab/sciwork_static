@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 xmlns:preview="content.workarea.preview.*" 
+		 xmlns:components="components.*" 
+		 gap="0" creationComplete="initGroup(event)" xmlns:simulation="simulation.*">
+	
+	<fx:Declarations>
+		<fx:String id="taskType" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import content.workarea.WorkArea;
+			import content.workarea.materials.MaterialsItem;
+			
+			import listeners.SelectMaterialEvent;
+			import listeners.ShowFullscreenEvent;
+			
+			import mx.events.FlexEvent;
+			
+			private var _currentMaterialItem:MaterialsItem;
+			
+			public function get currentMaterialItem():MaterialsItem
+			{
+				return _currentMaterialItem;
+			}
+
+			public function set currentMaterialItem(value:MaterialsItem):void
+			{
+				_currentMaterialItem = value;
+			}
+
+			/**
+			 * 
+			 * Creates the preview of each material, based on material type
+			 * 
+			 **/
+			public function previewMaterial(materialItem:MaterialsItem, taskId:String):void {
+				_currentMaterialItem = materialItem;
+				
+				switch(_currentMaterialItem.previewType) {
+					case WorkArea.IMAGE_TYPE:
+						imageViewer.setupPreview(_currentMaterialItem.previewType, _currentMaterialItem.fullSizeSource);
+						this.currentState = "imageState";
+						break;
+					case WorkArea.VIDEO_TYPE :
+						videoViewer.player.pauseVideo();
+						videoViewer.setupPreview(_currentMaterialItem.previewType, _currentMaterialItem.fullSizeSource);
+						this.currentState = "videoState";
+						break;
+				}
+				
+				if(materialItem.sourceType == "TWEETS") {
+					sender.visible = false;
+				}
+				else if(materialItem.sourceType == "QUESTIONS") {
+					sender.visible = false;
+				}
+				else if(materialItem.sourceType == "PORTFOLIO") {
+					if(_currentMaterialItem.isFinalPortfolio == "true") {
+						sender.visible = false;
+					}
+					else {
+						sender.visible = true;
+					}
+				}
+				else if(taskId == "50f689c2b760de188086ebe1") {
+					sender.visible = false;
+				}
+				else {
+					if(_currentMaterialItem.isPortfolio == "true") {
+						sender.visible = false;
+					}
+					else {
+						sender.visible = true;
+					}
+				}
+				
+				if(!_currentMaterialItem.canBeAddedToPF) {
+					sender.visible = false;
+				}
+			}
+			
+			/**
+			 * 
+			 * Handles click on "LEVER" button
+			 * 
+			 **/
+			protected function sendPreviewedMaterial(event:MouseEvent):void {
+				
+				var sme:SelectMaterialEvent = new SelectMaterialEvent(resourceManager.getString('resources', 'ADD_MATERIAL_TO_PORTFOLIO'), true);
+				if(_currentMaterialItem.sourceType == WorkArea.ASSET_TYPE) {
+					_currentMaterialItem.isPortfolio = "true";
+				}
+				else if(_currentMaterialItem.sourceType == WorkArea.PORTFOLIO_TYPE) {
+					_currentMaterialItem.isFinalPortfolio = "true";
+				}
+				sme.materialItem = _currentMaterialItem;
+				dispatchEvent(sme);
+			}			
+			
+			/**
+			 * 
+			 * Handles CREATION_COMPLETE event for this container
+			 * 
+			 **/
+			protected function initGroup(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'CLOSE_TWEET_PORTFOLIO_PREVIEW'), handleCloseTweetPortfolioPreview);
+				this.addEventListener(resourceManager.getString('resources', 'SHOW_FULLSCREEN_BUTTON_EVENT'), handleShowFullscreen);
+			}
+			
+			/**
+			 * 
+			 * Handles CLOSE_TWEET_PORTFOLIO_PREVIEW event
+			 * 
+			 **/
+			protected function handleCloseTweetPortfolioPreview(evt:Event):void {
+				this.currentState = "tweetsState";
+			}
+			
+			/**
+			 * 
+			 * Handles SHOW_FULLSCREEN event
+			 * 
+			 **/
+			protected function handleShowFullscreen(evt:Event):void {
+				var stfe:ShowFullscreenEvent = new ShowFullscreenEvent(resourceManager.getString('resources', 'SHOW_FULLSCREEN'), true);
+				stfe.shouldShow = true;
+				
+				if(this.currentState == "tweetsState") {
+					stfe.mode = "tweets";
+					stfe.tweetsInView = tweetsViewer.tweetsForGroup;
+				}
+				else if(this.currentState == "teacherTweetsState") {
+					stfe.mode = "teacherTweets";
+				}
+				else if(this.currentState == "default") {
+					return;
+				}
+				else if(this.currentState == "simulationState") {
+					stfe.mode = "simulation";
+					// Remove the simulation, as it will run now as a separate instance in full screen
+					this.currentState = "default";
+				}
+				else if(this.currentState == "teacherQuestionsState") {
+					stfe.mode = "teacherQuestions";
+				}
+				else if(this.currentState == "ipadState") {
+					stfe.mode = "ipad";
+				}
+				else if(this.currentState == "imageState" || this.currentState == "videoState" || this.currentState == "questionsState") {
+					if(_currentMaterialItem != null) {
+						stfe.mode = "picsvids";
+						stfe.showPullOutMenu = false;
+						stfe.material = _currentMaterialItem;
+					}
+					else {
+						stfe.mode = null;
+					}
+				}
+				
+				if(stfe.mode != null) {
+					dispatchEvent(stfe);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="default" />
+		<s:State name="questionsState" />
+		<s:State name="teacherQuestionsState" />		
+		<s:State name="videoState" />
+		<s:State name="imageState" />
+		<s:State name="tweetsState" />
+		<s:State name="teacherTweetsState" />
+		<s:State name="ipadState" />
+		<s:State name="simulationState" />
+		<s:State name="tweetLoggerState" />
+	</s:states>
+	
+	<components:PreviewHeader id="pHeader" width="100%" height="23" currentState="{currentState}" />
+	<s:BorderContainer width="100%" height="100%" borderWeight="1" borderAlpha=".3" >
+		<s:Rect left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90" >
+					<s:GradientEntry color="#EEEEEE" />
+					<s:GradientEntry color="#FFFFFF" />
+					<s:GradientEntry color="#FFFFFF" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		
+		<s:Group includeIn="simulationState" width="100%" height="100%" clipAndEnableScrolling="true">
+			<simulation:Sim id="simulate" scaleX="0.545" scaleY="0.545" y="-20"/>
+		</s:Group>
+		<preview:VideoViewer width="100%" height="100%" id="videoViewer" visible.default="false" visible.videoState="true" visible.questionsState="false" visible.imageState="false" visible.simulationState="false" visible.tweetsState="false" visible.ipadState="false" visible.teacherQuestionsState="false" visible.teacherTweetsState="false" visible.tweetLoggerState="false" />
+		<preview:ImageViewer width="100%" height="100%" id="imageViewer" visible.default="false" visible.videoState="false" visible.questionsState="true" visible.imageState="true" visible.simulationState="false" visible.tweetsState="false" visible.ipadState="false" visible.teacherQuestionsState="false" visible.teacherTweetsState="false" visible.tweetLoggerState="false" />
+		<preview:FullScreenPlayLauncher width="100%" height="100%" includeIn="ipadState, teacherQuestionsState, teacherTweetsState" />
+		<preview:TweetsLogger width="100%" height="100%" id="tweetsLogger" includeIn="tweetLoggerState" />
+		<preview:TweetsViewer width="100%" height="100%" id="tweetsViewer" includeIn="tweetsState" />
+		<s:Button id="sender" right="0" top="0" height="44" width="66" buttonMode="true" click="sendPreviewedMaterial(event)" skinClass="skins.addToPortfolioButtonSkin" excludeFrom="tweetsState, questionsState, default, simulationState, ipadState, teacherQuestionsState, teacherTweetsState, tweetLoggerState" />
+	</s:BorderContainer>	
+</s:VGroup>
